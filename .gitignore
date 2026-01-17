@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+logs/
+*.log
+
+# State
+state/
+*.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Screenshots
+screenshots/
+*.png
+
+# OCR Models
+*.pth
+*.onnx
+
+# Playwright
+.playwright/
