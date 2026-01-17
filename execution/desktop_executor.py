@@ -58,6 +58,8 @@ class DesktopExecutor:
                 return self._press_key(args)
             elif action == "wait":
                 return self._wait(args)
+            elif action == "launch_app":
+                return self._launch_app_via_search(args)
             # 🧠 SEMANTIC ACTIONS
             elif action == "vscode_open":
                 return self._vscode_open()
@@ -251,3 +253,40 @@ class DesktopExecutor:
     def get_mouse_position(self) -> tuple[int, int]:
         """Get current mouse position"""
         return pyautogui.position()
+
+    def _launch_app_via_search(self, args: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Launch an app using the Start Menu Search (Atomic Sequence).
+        
+        Sequence: Win -> Wait -> Type -> Wait -> Enter
+        This prevents the "Observe Loop" failure where the agent sees the desktop
+        before the start menu opens and tries to press Win again (closing it).
+        """
+        app_name = args["name"]
+        log.info(f"🚀 Launching app via search: {app_name}")
+        
+        try:
+            # 1. Press Win
+            kb.press_and_release("win")
+            
+            # 2. WAIT for animation (Critical!)
+            # Windows Start Menu animation usually takes 0.5-1.0s
+            time.sleep(1.5)
+            
+            # 3. Type App Name
+            kb.write(app_name, interval=0.05)
+            
+            # 4. Wait for search results
+            time.sleep(1.0)
+            
+            # 5. Press Enter to launch top result
+            kb.press_and_release("enter")
+            
+            # 6. Wait for app to actually launch before giving control back
+            time.sleep(3.0)
+            
+            return {"success": True, "app": app_name, "method": "search_atomic"}
+            
+        except Exception as e:
+            log.error(f"Failed to launch app {app_name}: {e}")
+            return {"success": False, "error": str(e)}

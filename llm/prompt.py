@@ -41,6 +41,8 @@ click
 type
 scroll
 wait
+launch_app
+
 
 vscode_open
 vscode_new_file
@@ -116,6 +118,14 @@ wait:
   "action": "wait",
   "args": {
     "seconds": <number>
+  }
+}
+
+launch_app:
+{
+  "action": "launch_app",
+  "args": {
+    "name": "<app name to search>"
   }
 }
 
@@ -258,7 +268,7 @@ NEGATIVE CONSTRAINTS (STRICT):
 DEFAULT BEHAVIOR:
 
 - Prefer Desktop Actions: If the user asks for "Spotify", "VLC", or "Settings", assume it is a local app.
-- Fallback Strategy: If `open_app` fails, try opening Start Menu (`win`) -> Type name -> Enter.
+- Fallback Strategy: If `open_app` fails, use `launch_app` (Start Menu Search). Do NOT try to manually press win + type.
 - Browser Usage: Only use `browser_open` if the task is clearly web-related.
 
 ----------------------------------
@@ -398,35 +408,14 @@ Step 5:
 Task: "open start menu and search for task manager"
 Step 1:
 {
-  "thought": "I need to open the Start Menu. Pressing the 'win' key is the most reliable way.",
-  "action": "press_key",
-  "args": { "key": "win" }
+  "thought": "I need to open Task Manager. The 'launch_app' action is the most robust way to do this via Start Menu search.",
+  "action": "launch_app",
+  "args": { "name": "Task Manager" }
 }
 
 Step 2:
 {
-  "thought": "Start menu should be opening. I'll wait a brief moment.",
-  "action": "wait",
-  "args": { "seconds": 1 }
-}
-
-Step 3:
-{
-  "thought": "Now I will type 'Task Manager' to search for it.",
-  "action": "type",
-  "args": { "text": "Task Manager" }
-}
-
-Step 4:
-{
-  "thought": "The app should be selected by default. Pressing Enter will open it.",
-  "action": "press_key",
-  "args": { "key": "enter" }
-}
-
-Step 5:
-{
-  "thought": "Task Manager opened. Stopping.",
+  "thought": "Task Manager launched. Stopping.",
   "action": "stop",
   "args": {}
 }
