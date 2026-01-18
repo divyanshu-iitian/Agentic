@@ -44,7 +44,7 @@ class VisionClient:
                 "format": "json" # Force JSON mode if supported
             }
             
-            response = requests.post(self.base_url, json=payload, timeout=30)
+            response = requests.post(self.base_url, json=payload, timeout=120)
             if response.status_code != 200:
                 log.error(f"Vision API Error: {response.text}")
                 return None

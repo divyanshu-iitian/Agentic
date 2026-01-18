@@ -24,18 +24,26 @@ class ActionEntry:
 
 @dataclass
 class WorldState:
-    """Snapshot of the world state"""
+    """Snapshot of the world state with symbolic predicates"""
     active_app: str = "unknown"
     focused_element: str = "unknown"
+    
+    # 🧠 Symbolic Predicates (Agent 2.0)
+    is_start_menu_open: bool = False
+    is_browser_open: bool = False
+    last_action_success: bool = True
+    
+    # Raw Data
     last_screenshot_path: Optional[str] = None
     browser_url: Optional[str] = None
-    
+    visible_text_summary: str = ""
+
 class WorldModel:
     def __init__(self):
         self.state = WorldState()
         self.action_history: List[ActionEntry] = []
-        self.context_memory: Dict[str, Any] = {} # For "remembering" things like "found_email"
-        self.task_stack: List[str] = [] # Stack of active sub-tasks
+        self.context_memory: Dict[str, Any] = {}
+        self.task_stack: List[str] = []
         
     def update_context(self, key: str, value: Any):
         """Update a specific context variable"""
@@ -56,13 +64,45 @@ class WorldModel:
         )
         self.action_history.append(entry)
         
-        # Heuristics to update state based on action
-        if action == "open_app":
-            self.state.active_app = args.get("name", "unknown")
-        elif action == "browser_open":
-            self.state.active_app = "browser"
-            self.state.browser_url = args.get("url")
+        # Update success flag
+        self.state.last_action_success = result.get("success", True)
             
+    def update_from_observation(self, observation: str):
+        """
+        🧠 CORE LOGIC: Update symbolic state from raw observation text.
+        This parses the "VISIBLE TEXT" section from the observation.
+        """
+        obs_lower = observation.lower()
+        
+        # 1. Start Menu Detection
+        # Heuristic: Look for common Start Menu text
+        start_keywords = [
+            "search apps, settings, and documents",
+            "pinned",
+            "recommended",
+            "type here to search",
+            "all apps",
+            "search", # Lenient
+            "user", # Often top right
+            "power" # Often bottom right
+        ]
+        
+        # Check if multiple small keywords exist if the big phrase is missing
+        start_menu_score = sum(1 for k in start_keywords if k in obs_lower)
+        
+        # If explicitly seen "pinned" or "recommended" with high confidence
+        strong_indicators = ["pinned", "recommended", "all apps", "type here to search"]
+        has_strong = any(k in obs_lower for k in strong_indicators)
+        
+        self.state.is_start_menu_open = has_strong or start_menu_score >= 2
+        
+        # 2. Browser Detection
+        # Heuristic: Look for browser UI elements or specific tag
+        self.state.is_browser_open = "browser:" in obs_lower or "addr_bar" in obs_lower
+        
+        # 3. Update summary
+        self.state.visible_text_summary = observation[:500] + "..." if len(observation) > 500 else observation
+
     def get_recent_history(self, limit: int = 5) -> List[ActionEntry]:
         """Get the last N actions"""
         return self.action_history[-limit:]
@@ -71,6 +111,5 @@ class WorldModel:
         """Reset state for a new task"""
         self.task_stack = []
         self.action_history = []
-        # We keep context_memory? Maybe clear it too depending on user intent.
-        # For now, clear it to ensure "fresh start" as requested by user.
         self.context_memory = {}
+

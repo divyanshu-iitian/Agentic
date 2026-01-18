@@ -54,8 +54,11 @@ class Agent:
         # 🧠 NEW: Vision Layer
         self.vision_client = VisionClient() # Uses Ollama (Llava)
         
+        # 🧠 AGENT 2.0 BRAIN 🧠
+        self.world_model = WorldModel()
+        
         # Executors
-        self.desktop_executor = DesktopExecutor(vision_client=self.vision_client)
+        self.desktop_executor = DesktopExecutor(vision_client=self.vision_client, world_model=self.world_model)
         self.browser_executor = BrowserExecutor()
         
         # Perception layer
@@ -64,10 +67,8 @@ class Agent:
         self.ui_state_builder = UIStateBuilder()
         self.change_detector = ChangeDetector()
         
-        # AGENT 2.0 BRAIN 🧠
-        self.world_model = WorldModel()
         self.planner = Planner(self.llm, self.world_model)
-        self.critic = Critic(self.llm)
+        self.critic = Critic(self.llm, self.world_model)
         
         # Perception state
         self.current_ui_state = None
@@ -138,6 +139,9 @@ class Agent:
                     observation = await self._observe()
                     self.state.update_observation(observation)
                     
+                    # 🧠 AGENT 2.0: Update World Model from Observation
+                    self.world_model.update_from_observation(observation)
+                    
                     # 2. EXECUTE (Reasoning for single step)
                     action_json = self._reason(current_step, observation, task_context=task)
                     
@@ -154,12 +158,38 @@ class Agent:
                          log.warning("Loop detected in micro-steps, forcing verification")
                          break # Break loop to force verification/replanning
 
-                    # Check app spamming
-                    if action_name == "open_app" or (action_name == "press_key" and action_args.get("key") == "win"):
-                         app = action_args.get("name", "start menu")
-                         if self.world_model.state.active_app == app: # Use WorldModel for context
-                             log.info(f"Skipping {app}, already active")
+                    # 🧠 AGENT 2.0: HEURISTIC OVERRIDE 🛡️
+                    # The Local LLM struggles to use 'launch_app' and prefers 'win' key + typing.
+                    # We will intercept 'press_key("win")' and FORCE 'launch_app' if we can infer the intent.
+                    
+                    if action_name == "press_key" and action_args.get("key") == "win":
+                         # Check if the current step mentions "Open" or an App Name
+                         step_lower = current_step.lower()
+                         if "open" in step_lower or "launch" in step_lower:
+                             # Try to extract app name from step text (naive but effective)
+                             # e.g. "Open Outlook" -> "Outlook"
+                             probable_app = None
+                             for word in step_lower.split():
+                                 if word not in ["open", "launch", "start", "menu", "app", "application", "the"]:
+                                     probable_app = word
+                                     break
+                             
+                             if probable_app:
+                                 log.warning(f"🛡️ OVERRIDE: Converting 'press_key(win)' to 'launch_app({probable_app})' for robustness.")
+                                 action_name = "launch_app"
+                                 action_args = {"name": probable_app}
+                                 
+                         # If we couldn't guess the app, at least prevent the loop by checking state
+                         elif self.world_model.state.is_start_menu_open:
+                             log.info(f"Skipping 'win' press, Start Menu is ALREADY open (State-Aware)")
+                             # We skip the action but we should probably tell the agent to proceed to typing
+                             # For now, let's just continue and hope the next verify cycle catches it
                              continue
+
+                    # Check app spamming (Enhanced with World Model)
+                    if action_name == "open_app" and self.world_model.state.active_app == app: # Use WorldModel for context
+                        log.info(f"Skipping {app}, already active")
+                        continue
 
                     # Execute
                     result = await self._execute(action_name, action_args)
@@ -173,6 +203,8 @@ class Agent:
                     # We verify after every action? Or after the LLM thinks it's done with the step?
                     # For now, let's verify after every action to see if the step is complete.
                     new_observation = await self._observe()
+                    # Also update world model after execution!
+                    self.world_model.update_from_observation(new_observation)
                     
                     success, reason = self.critic.verify(current_step, new_observation)
                     
@@ -219,8 +251,15 @@ class Agent:
     def _reason(self, step: str, observation: str, task_context: str) -> Optional[dict]:
         """Reason about a SINGLE step within the plan"""
         # Focus the prompt on the current step
+        # 🧠 Inject World State into Prompt
+        world_state_str = f"Active App: {self.world_model.state.active_app}\n"
+        world_state_str += f"Start Menu Open: {self.world_model.state.is_start_menu_open}\n"
+        world_state_str += f"Browser Open: {self.world_model.state.is_browser_open}"
+        
         prompt = f"""OVERALL GOAL: {task_context}
 CURRENT SUB-TASK: {step}
+WORLD STATE:
+{world_state_str}
 
 OBSERVATION:
 {observation}

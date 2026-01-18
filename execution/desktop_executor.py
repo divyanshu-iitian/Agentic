@@ -15,14 +15,17 @@ from utils.logger import log
 from perception.vision_client import VisionClient
 
 
+from core.world_model import WorldModel
+
 class DesktopExecutor:
     """Execute desktop automation actions"""
     
-    def __init__(self, vision_client: Optional[VisionClient] = None):
+    def __init__(self, vision_client: Optional[VisionClient] = None, world_model: Optional[WorldModel] = None):
         config = get_config()
         self.click_delay = config.execution.desktop.click_delay
         self.type_delay = config.execution.desktop.type_delay
         self.vision_client = vision_client
+        self.world_model = world_model
         
         # PyAutoGUI safety settings
         pyautogui.FAILSAFE = True  # Move mouse to corner to abort
@@ -61,6 +64,8 @@ class DesktopExecutor:
             elif action == "launch_app":
                 return self._launch_app_via_search(args)
             # 🧠 SEMANTIC ACTIONS
+            elif action == "browser_open" or action == "browser_search":
+                return self._browser_nav(args)
             elif action == "vscode_open":
                 return self._vscode_open()
             elif action == "vscode_new_file":
@@ -95,7 +100,7 @@ class DesktopExecutor:
         
         try:
             subprocess.Popen(command, shell=True)
-            time.sleep(2)  # Give app more time to open (increased from 1s)
+            time.sleep(5)  # Give app more time to open (increased from 2s to 5s)
             log.info(f"Opened application: {app_name}")
             return {"success": True, "app": app_name}
         except Exception as e:
@@ -186,6 +191,11 @@ class DesktopExecutor:
         """Press a specific key or combination"""
         key = args["key"]
         
+        # 🧠 AGENT 2.0: Context Checking
+        if key == "win" and self.world_model and self.world_model.state.is_start_menu_open:
+            log.info("🧠 Skipping 'win' press: Start Menu is ALREADY open according to World Model")
+            return {"success": True, "skipped": True, "reason": "Start Menu already open"}
+        
         try:
             # Handle special keys safely
             kb.press_and_release(key)
@@ -274,7 +284,7 @@ class DesktopExecutor:
             time.sleep(1.5)
             
             # 3. Type App Name
-            kb.write(app_name, interval=0.05)
+            kb.write(app_name, delay=0.05)
             
             # 4. Wait for search results
             time.sleep(1.0)
@@ -283,10 +293,42 @@ class DesktopExecutor:
             kb.press_and_release("enter")
             
             # 6. Wait for app to actually launch before giving control back
-            time.sleep(3.0)
+            time.sleep(6.0)
             
             return {"success": True, "app": app_name, "method": "search_atomic"}
             
         except Exception as e:
             log.error(f"Failed to launch app {app_name}: {e}")
+            return {"success": False, "error": str(e)}
+
+    def _browser_nav(self, args: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Robust Browser Navigation/Search.
+        Uses Ctrl+L to focus address bar -> Type -> Enter.
+        Works in Chrome, Firefox, Edge, Brave.
+        """
+        url_or_query = args.get("url") or args.get("query")
+        log.info(f"🌐 Robust Browser Nav: {url_or_query}")
+        
+        try:
+            # 1. Focus Address Bar
+            # Try Ctrl+L first (Standard)
+            kb.press_and_release("ctrl+l")
+            time.sleep(0.5)
+            
+            # 2. Type URL/Query
+            # We use a slightly faster typing speed for long URLs
+            kb.write(url_or_query, delay=0.02)
+            time.sleep(0.5)
+            
+            # 3. Enter
+            kb.press_and_release("enter")
+            
+            # 4. Wait for load
+            time.sleep(3.0)
+            
+            return {"success": True, "action": "browser_nav", "input": url_or_query}
+            
+        except Exception as e:
+            log.error(f"Browser nav failed: {e}")
             return {"success": False, "error": str(e)}

@@ -32,8 +32,9 @@ Response:
 
 RULES:
 1. Keep steps atomic (one action per step).
-2. Include "Verify" steps to check if actions succeeded.
-3. Be explicit.
+2. EXCEPTION: For launching apps, use a SINGLE step: "Launch App 'Name'". DO NOT break it into "Open Menu" -> "Type".
+3. Include "Verify" steps to check if actions succeeded.
+4. Be explicit.
 """
 
 class Planner:

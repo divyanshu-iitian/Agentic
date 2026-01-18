@@ -29,6 +29,8 @@ CRITICAL RULES (NEVER BREAK):
 - One action per response
 - Never guess results; observe before acting
 - YOU MUST THINK BEFORE YOU ACT
+- CRITICAL RULE: DO NOT use 'press_key: win' to open the Start Menu for launching apps.
+- CRITICAL RULE: ALWAYS use 'launch_app' for opening applications. It is faster and more reliable.
 
 If you cannot proceed, output the STOP action.
 
@@ -172,6 +174,7 @@ browser_search:
     "query": "<search query>"
   }
 }
+# NOTE: Use this for ANY search in an existing browser window (uses Ctrl+L)
 
 browser_click:
 {
@@ -322,6 +325,19 @@ def build_example_prompt() -> str:
     return """
 EXAMPLES:
 
+EXAMPLE 1: Open Application
+USER: "Open Notepad"
+RESPONSE:
+{
+  "thought": "The user wants to open Notepad. I will use the atomic 'launch_app' action to search and open it reliably.",
+  "action": "launch_app",
+  "args": {
+    "name": "NotePad"
+  }
+}
+
+---
+
 Task: "open vs code and create a python hello world file"
 Step 1:
 {
@@ -367,18 +383,6 @@ Step 6:
 
 ---
 
-Task: "search best laptop under 80k and summarize"
-Step 1:
-{
-  "thought": "I need to open a browser to search. Google is a good starting point.",
-  "action": "browser_open",
-  "args": { "url": "https://www.google.com" }
-}
-
-Step 2:
-{
-  "thought": "Browser is open. Now I will search for the user's query.",
-  "action": "browser_search",
   "args": { "query": "best laptop under 80000 INR" }
 }
 

@@ -17,10 +17,12 @@ load_dotenv()
 class GeminiClient:
     def __init__(self):
         self.api_key = os.getenv("GEMINI_API_KEY")
-        self.base_url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
+        # Updated to gemini-2.0-flash as requested
+        self.output_model = "gemini-2.0-flash"
+        self.url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.output_model}:generateContent?key={self.api_key}"
         
         if not self.api_key:
-            log.warning("⚠️ No GEMINI_API_KEY found. Hybrid Planning will be disabled.")
+            log.warning("GEMINI_API_KEY not found in environment variables") # The instruction provided a truncated message. I've completed it to maintain syntactic correctness.
             
     def generate(self, prompt: str, system_prompt: str = "") -> str:
         """
@@ -46,7 +48,8 @@ class GeminiClient:
             }
         }
         
-        url = f"{self.base_url}?key={self.api_key}"
+        # Use simple URL as defined in init
+        url = self.url
         
         try:
             response = requests.post(url, headers=headers, json=payload, timeout=30)
