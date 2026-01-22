@@ -30,6 +30,15 @@ class ClickAction(BaseModel):
         assert "y" in self.args, "Missing 'y' in args"
 
 
+class ClickTextAction(BaseModel):
+    """Click text using OCR"""
+    action: Literal["click_text"] = "click_text"
+    args: Dict[str, str] = Field(...)
+    
+    def validate_args(self):
+        assert "text" in self.args, "Missing 'text' in args"
+
+
 class TypeAction(BaseModel):
     """Type text"""
     action: Literal["type"] = "type"
@@ -139,7 +148,7 @@ class StopAction(BaseModel):
 # ============= Union Type =============
 
 AgentAction = (
-    OpenAppAction | ClickAction | TypeAction | ScrollAction | WaitAction |
+    OpenAppAction | ClickAction | ClickTextAction | TypeAction | ScrollAction | WaitAction |
     VSCodeOpenAction | VSCodeNewFileAction | VSCodeSaveFileAction |
     BrowserOpenAction | BrowserSearchAction | BrowserClickAction | 
     BrowserScrollAction | BrowserExtractAction | StopAction
@@ -151,6 +160,7 @@ AgentAction = (
 ACTION_TYPES = {
     "open_app": OpenAppAction,
     "click": ClickAction,
+    "click_text": ClickTextAction,
     "type": TypeAction,
     "scroll": ScrollAction,
     "wait": WaitAction,

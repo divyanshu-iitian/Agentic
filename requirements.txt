@@ -1,6 +1,6 @@
 # Core Dependencies
 python-dotenv==1.0.0
-pyyaml==6.0.1
+pyyaml>=6.0.1
 
 # LLM Integration
 ollama==0.1.6
@@ -10,14 +10,14 @@ requests==2.31.0
 pyautogui==0.9.54
 keyboard==0.13.5
 mouse==0.7.1
-pillow==10.2.0
+pillow>=10.2.0
 
 # Browser Automation
 playwright==1.41.2
 
 # OCR and Vision
 easyocr==1.7.0
-opencv-python==4.9.0.80
+opencv-python>=4.9.0.80
 
 # UI
 # Tkinter is built-in with Python

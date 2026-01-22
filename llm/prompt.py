@@ -57,6 +57,7 @@ browser_extract
 
 press_key
 click_element
+click_text
 
 stop
 
@@ -98,6 +99,15 @@ click_element:
     "name": "<visual description, e.g. 'Search Bar', 'Submit Button'>"
   }
 }
+
+click_text:
+{
+  "action": "click_text",
+  "args": {
+    "text": "<exact text to click on screen>"
+  }
+}
+# USE click_text PREFERENTIALLY if you see text on the button. It is more reliable than click_element.
 
 type:
 {

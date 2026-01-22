@@ -7,7 +7,6 @@ Does NOT execute actions. ONLY PLANS.
 
 from typing import List, Dict, Optional
 from llm.ollama_client import OllamaClient
-from llm.gemini_client import GeminiClient
 from core.world_model import WorldModel
 from utils.logger import log
 import json
@@ -40,7 +39,6 @@ RULES:
 class Planner:
     def __init__(self, llm: OllamaClient, world_model: WorldModel):
         self.local_llm = llm
-        self.cloud_llm = GeminiClient()
         self.world_model = world_model
         self.current_plan: List[str] = []
         self.current_step_index: int = 0
@@ -49,20 +47,13 @@ class Planner:
         """Generate a high-level plan for the task"""
         prompt = f"TASK: {task}\n\nBreak this down into steps:"
         
-        # Try Cloud Brain (Gemini) First ☁️
-        response = None
-        if self.cloud_llm.api_key:
-            log.info("☁️ Using Gemini Pro for Planning...")
-            response = self.cloud_llm.generate(prompt, system_prompt=SYSTEM_PROMPT_PLANNER)
-            
-        # Fallback to Local Brain (Ollama) 🏠
-        if not response:
-            log.info("🏠 Using Local Ollama for Planning...")
-            try:
-                response = self.local_llm.generate(prompt, system_prompt=SYSTEM_PROMPT_PLANNER)
-            except Exception as e:
-                log.error(f"Planning failed: {e}")
-                return [task]
+        # Local Brain Only 🏠
+        log.info("🏠 Using Local Ollama for Planning...")
+        try:
+            response = self.local_llm.generate(prompt, system_prompt=SYSTEM_PROMPT_PLANNER)
+        except Exception as e:
+            log.error(f"Planning failed: {e}")
+            return [task]
 
         try:
             # Try to parse JSON from response

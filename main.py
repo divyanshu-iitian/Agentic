@@ -25,7 +25,22 @@ class AgenticApp:
     
     def on_command(self, command: str):
         """Handle command from UI"""
+        print(f"DEBUG: Main Received -> {command}")
         log.info(f"📨 Received command: {command}")
+        
+        # Handle Feedback
+        if command.startswith("FEEDBACK:"):
+            feedback = command.replace("FEEDBACK:", "").strip()
+            print(f"DEBUG: Processing Feedback -> {feedback}")
+            self.agent.learn_from_feedback(feedback)
+            return
+            
+        # Handle Stop
+        if command == "STOP_IMMEDIATELY":
+            log.warning("🛑 STOP command received from UI")
+            self.agent.emergency_stop()
+            # We don't need to join the thread, it should exit gracefully
+            return
         
         # Execute task in background thread
         import threading

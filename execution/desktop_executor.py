@@ -51,8 +51,10 @@ class DesktopExecutor:
                 return self._open_app(args)
             elif action == "click":
                 return self._click(args)
-            elif action == "click_element": # 👁️ NEW: Vision Click
+            elif action == "click_element": # 👁️ Vision Click (Fallible)
                 return self._click_element(args)
+            elif action == "click_text": # 🔤 NEW: OCR Click (Reliable)
+                return self._click_text_anchor(args)
             elif action == "type":
                 return self._type(args)
             elif action == "scroll":
@@ -156,12 +158,62 @@ class DesktopExecutor:
         
         return {"success": True, "element": element_name, "x": x, "y": y}
     
+    def _click_text_anchor(self, args: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Click text on screen using Deterministic OCR.
+        Reliability: HIGH (No AI hallucination).
+        """
+        text = args.get("text")
+        if not text:
+             return {"success": False, "error": "No text provided for anchor"}
+             
+        log.info(f"🔤 OCR Looking for text: '{text}'")
+        
+        # We need an OCR Extractor here. Ideally passed in constructor, but for now lets quick-instantiate or rely on one
+        # To avoid circular imports or heavy logic, we will do a quick grab here or assume one exists?
+        # Better: The Agent should pass the coordinates? No, the executor should do the finding to be atomic.
+        
+        from perception.ocr_extractor import OCRExtractor
+        ocr = OCRExtractor() # Quick init (tesseract is fast)
+        
+        # 1. Screenshot
+        screenshot = pyautogui.screenshot()
+        
+        # 2. Extract
+        elements = ocr.extract(screenshot)
+        
+        # 3. Find Match
+        matches = ocr.find_text(elements, text, case_sensitive=False)
+        
+        if not matches:
+             # Try fuzzy/partial match logic manually?
+             # For now, strict fail is better than random click
+             return {"success": False, "error": f"Text '{text}' not found on screen"}
+             
+        # Pick the most likely candidate (first one or center-most?)
+        # Let's pick the one highest up (top-left) usually means typical UI flow
+        target = matches[0]
+        tx, ty = target.center
+        
+        log.info(f"🔤 OCR Found '{text}' at ({tx}, {ty})")
+        
+        # 4. Click
+        time.sleep(self.click_delay)
+        pyautogui.click(tx, ty)
+        
+        return {"success": True, "text": text, "x": tx, "y": ty}
+    
     def _type(self, args: Dict[str, Any]) -> Dict[str, Any]:
-        """Type text"""
+        """Type text with Focus Assurance & Visual Verification"""
         text = args["text"]
         
+        # 1. Blind Click Center to ensure window body focus (Safe for 1920x1080)
+        pyautogui.click(960, 540) 
+        time.sleep(0.5)
+        
+        # 2. Type
         time.sleep(self.type_delay)
-        pyautogui.write(text, interval=0.05)
+        pyautogui.write(text, interval=0.1) 
         log.info(f"Typed text: {text[:50]}...")
         
         return {"success": True, "text_length": len(text)}
@@ -303,31 +355,51 @@ class DesktopExecutor:
 
     def _browser_nav(self, args: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Robust Browser Navigation/Search.
-        Uses Ctrl+L to focus address bar -> Type -> Enter.
-        Works in Chrome, Firefox, Edge, Brave.
+        Ultimate Reliability Navigation (Win+R Method).
+        
+        Why this works:
+        - Bypasses all GUI clicking/focus issues.
+        - 'Win+R' is a system-level interrupt that ALWAYS opens the Run dialog.
+        - Typing 'chrome <url>' works globally if Chrome is in PATH (standard).
         """
         url_or_query = args.get("url") or args.get("query")
-        log.info(f"🌐 Robust Browser Nav: {url_or_query}")
+        log.info(f"🌐 Ultimate Browser Nav (Win+R): {url_or_query}")
         
         try:
-            # 1. Focus Address Bar
-            # Try Ctrl+L first (Standard)
-            kb.press_and_release("ctrl+l")
+            # 1. Format URL/Query
+            if not url_or_query.startswith("http") and not "." in url_or_query:
+                # Search query -> google search url
+                import urllib.parse
+                safe_query = urllib.parse.quote(url_or_query)
+                target = f"www.google.com/search?q={safe_query}" # Start without https for run dialog usually better
+            elif not url_or_query.startswith("http"):
+                 target = url_or_query
+            else:
+                 # Strip https:// for run dialog cleanliness, though keeping it is fine
+                 target = url_or_query
+            
+            # 2. Open Run Dialog
+            # This is the "Nuclear Option" for reliability
+            kb.press_and_release("win+r")
+            time.sleep(1.0) # Wait for dialog to appear
+            
+            # 3. Type Command
+            # "chrome google.com"
+            command = f"chrome {target}"
+            kb.write(command, delay=0.05)
             time.sleep(0.5)
             
-            # 2. Type URL/Query
-            # We use a slightly faster typing speed for long URLs
-            kb.write(url_or_query, delay=0.02)
-            time.sleep(0.5)
-            
-            # 3. Enter
+            # 4. Execute
             kb.press_and_release("enter")
             
-            # 4. Wait for load
-            time.sleep(3.0)
+            # 5. Wait for browser to launch
+            time.sleep(4.0)
             
-            return {"success": True, "action": "browser_nav", "input": url_or_query}
+            return {"success": True, "action": "browser_nav_win_r", "command": command}
+            
+        except Exception as e:
+            log.error(f"Browser nav failed: {e}")
+            return {"success": False, "error": str(e)}
             
         except Exception as e:
             log.error(f"Browser nav failed: {e}")

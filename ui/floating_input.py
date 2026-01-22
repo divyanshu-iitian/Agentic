@@ -1,154 +1,235 @@
 """
-Floating Input Box UI
+Floating Input Box UI (Premium Redesign)
 
-Always-on-top Tkinter interface for agent control.
+Modern, GPU-accelerated interface using CustomTkinter.
+Inspired by Spotlight/Raycast.
 """
 
+import customtkinter as ctk
 import tkinter as tk
-from tkinter import ttk
-import asyncio
-import threading
 from typing import Callable, Optional
 from core.config import get_config
 from utils.logger import log
 
+# Set default theme
+ctk.set_appearance_mode("Dark")
+ctk.set_default_color_theme("blue")
 
 class FloatingInputBox:
-    """Persistent floating UI for agent commands"""
+    """Persistent floating UI for agent control (Premium Version)"""
     
     def __init__(self, on_command: Callable[[str], None]):
-        """
-        Initialize floating input box.
-        
-        Args:
-            on_command: Callback function when command is entered
-        """
+        """Initialize premium UI"""
         self.on_command = on_command
         config = get_config()
         
-        # Create window
-        self.root = tk.Tk()
+        # Main Window
+        self.root = ctk.CTk()
         self.root.title("Agentic AI")
         
-        # Configure window
-        self.root.attributes('-topmost', config.ui.always_on_top)
-        self.root.geometry(f"{config.ui.window_width}x{config.ui.window_height}")
+        # 🎨 Premium Window Settings
+        self.root.overrideredirect(True)  # Remove standard window chrome (No Title Bar)
+        self.root.attributes('-topmost', True)
+        self.root.attributes('-alpha', 0.96)  # Slight transparency (Glass effect)
         
-        # Style
-        self.root.configure(bg="#1e1e1e")
+        # Geometry (Centered Top)
+        width = 700
+        height = 80
+        screen_width = self.root.winfo_screenwidth()
+        screen_height = self.root.winfo_screenheight()
+        x = (screen_width // 2) - (width // 2)
+        y = int(screen_height * 0.15) # 15% from top
+        
+        self.root.geometry(f"{width}x{height}+{x}+{y}")
+        self.root.configure(fg_color="#1a1a1a") # Dark background
+        self.root.eval('tk::PlaceWindow . center') # Try to center
+        
+        # Make draggable
+        self.root.bind("<ButtonPress-1>", self.start_move)
+        self.root.bind("<ButtonRelease-1>", self.stop_move)
+        self.root.bind("<B1-Motion>", self.do_move)
         
         # Build UI
-        self._build_ui(config)
+        self._build_ui()
         
-        # Hotkey activation (handled separately in main)
-        self.activation_hotkey = config.ui.activation_hotkey
+        # Focus handling
+        self.root.after(100, self.focus)
         
-        log.info("UI initialized")
-    
-    def _build_ui(self, config):
-        """Build the UI components"""
-        # Main frame
-        main_frame = tk.Frame(self.root, bg="#1e1e1e")
-        main_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
-        
-        # Label
-        label = tk.Label(
-            main_frame,
-            text="🤖 Agentic AI — Type your command:",
-            bg="#1e1e1e",
-            fg="#ffffff",
-            font=("Segoe UI", 10)
+        log.info("💎 Premium UI initialized")
+
+    def _build_ui(self):
+        """Build modern UI components"""
+        # Outer Frame (Border/Glow effect placeholder)
+        self.frame = ctk.CTkFrame(
+            self.root, 
+            fg_color="#2b2b2b", 
+            corner_radius=15,
+            border_width=1,
+            border_color="#404040"
         )
-        label.pack(anchor=tk.W, pady=(0, 5))
+        self.frame.pack(fill="both", expand=True, padx=2, pady=2)
         
-        # Input frame
-        input_frame = tk.Frame(main_frame, bg="#1e1e1e")
-        input_frame.pack(fill=tk.X)
-        
-        # Text entry
-        self.entry = tk.Entry(
-            input_frame,
-            bg="#2d2d2d",
-            fg="#ffffff",
-            font=("Segoe UI", config.ui.font_size),
-            insertbackground="#ffffff",
-            relief=tk.FLAT,
-            highlightthickness=2,
-            highlightbackground="#007acc",
-            highlightcolor="#007acc"
+        # 🤖 Icon/Label
+        self.lbl_icon = ctk.CTkLabel(
+            self.frame, 
+            text="🤖", 
+            font=("Segoe UI Emoji", 24)
         )
-        self.entry.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, pady=2)
+        self.lbl_icon.pack(side="left", padx=(15, 5), pady=10)
+        
+        # 📝 Main Input
+        self.entry = ctk.CTkEntry(
+            self.frame,
+            placeholder_text="Ask Agentic to do something...",
+            font=("Segoe UI", 14),
+            height=45,
+            fg_color="#1a1a1a",
+            text_color="#ffffff",
+            border_width=0,
+            corner_radius=10
+        )
+        self.entry.pack(side="left", fill="both", expand=True, padx=5, pady=15)
         self.entry.bind("<Return>", self._on_enter)
         self.entry.bind("<Escape>", self._on_escape)
         
-        # Submit button
-        self.submit_btn = tk.Button(
-            input_frame,
-            text="Execute",
-            bg="#007acc",
-            fg="#ffffff",
-            font=("Segoe UI", 10, "bold"),
-            relief=tk.FLAT,
-            cursor="hand2",
+        
+        # 🧠 Teach Button
+        self.btn_teach = ctk.CTkButton(
+            self.frame,
+            text="🧠",
+            width=35,
+            height=35,
+            font=("Segoe UI Emoji", 14),
+            fg_color="#333333",
+            hover_color="#4d4d4d",
+            corner_radius=8,
+            command=self._toggle_teach_mode
+        )
+        self.btn_teach.pack(side="right", padx=(0, 5), pady=10)
+        
+        # ▶️ Action Button
+        self.btn_action = ctk.CTkButton(
+            self.frame,
+            text="RUN",
+            width=60,
+            height=35,
+            font=("Segoe UI", 11, "bold"),
+            fg_color="#0066cc",
+            hover_color="#0052a3",
+            corner_radius=8,
             command=self._on_submit
         )
-        self.submit_btn.pack(side=tk.RIGHT, padx=(5, 0))
+        self.btn_action.pack(side="right", padx=(5, 5), pady=10)
         
-        # Status label
-        self.status_label = tk.Label(
-            main_frame,
-            text="Ready",
-            bg="#1e1e1e",
-            fg="#00ff00",
-            font=("Segoe UI", 9)
-        )
-        self.status_label.pack(anchor=tk.W, pady=(5, 0))
-    
+        self.feedback_mode = False
+        self.is_running = False
+
+    def _toggle_teach_mode(self):
+        """Switch between Command and Teach mode"""
+        self.feedback_mode = not self.feedback_mode
+        
+        if self.feedback_mode:
+            self.entry.configure(placeholder_text="Tell me: What did I do right/wrong?")
+            self.entry.focus_set()
+            self.btn_teach.configure(fg_color="#e6b800") # Active yellow
+            self.btn_action.configure(text="SAVE", fg_color="#e6b800", hover_color="#ccda00")
+        else:
+            self.entry.configure(placeholder_text="Ask Agentic to do something...")
+            self.btn_teach.configure(fg_color="#333333")
+            self.btn_action.configure(text="RUN", fg_color="#0066cc", hover_color="#0052a3")
+
+        
+    def start_move(self, event):
+        self.x = event.x
+        self.y = event.y
+
+    def stop_move(self, event):
+        self.x = None
+        self.y = None
+
+    def do_move(self, event):
+        deltax = event.x - self.x
+        deltay = event.y - self.y
+        x = self.root.winfo_x() + deltax
+        y = self.root.winfo_y() + deltay
+        self.root.geometry(f"+{x}+{y}")
+
     def _on_enter(self, event=None):
-        """Handle Enter key press"""
         self._on_submit()
     
     def _on_escape(self, event=None):
-        """Handle Escape key press"""
-        self.entry.delete(0, tk.END)
-        self.root.withdraw()
+        self.root.withdraw() # Hide
     
     def _on_submit(self):
-        """Handle command submission"""
         command = self.entry.get().strip()
         
-        if not command:
+        # Priority 1: Stop if running
+        if self.is_running and not self.feedback_mode:
+            self.on_command("STOP_IMMEDIATELY")
+            self.is_running = False
+            self.btn_action.configure(text="STOPPING...", fg_color="#990000")
+            # Auto-switch to Teach Mode for immediate correction
+            self.root.after(1000, self._activate_correction_mode)
             return
+
+        if not command: return
+        self.entry.delete(0, 'end')
         
-        # Clear entry
-        self.entry.delete(0, tk.END)
-        
-        # Update status
-        self.set_status("Executing...", "#ffff00")
-        
-        # Call callback
-        self.on_command(command)
-    
-    def set_status(self, text: str, color: str = "#00ff00"):
-        """Update status label safely"""
-        def _update():
-            self.status_label.config(text=text, fg=color)
-        
-        self.root.after(0, _update)
-    
+        # Priority 2: Feedback
+        if self.feedback_mode:
+            msg = f"FEEDBACK: {command}"
+            print(f"DEBUG: UI Sending -> {msg}")
+            self.on_command(msg)
+            self._toggle_teach_mode() # Reset
+            self.set_status("Feedback Saved! 🧠", "#e6b800")
+            
+        # Priority 3: Run new command
+        else:
+            self.is_running = True
+            self.on_command(command)
+            # Button updates to STOP via set_status call from Agent
+
+    def _activate_correction_mode(self):
+        """Automatically ask for feedback after stop"""
+        if not self.feedback_mode:
+            self._toggle_teach_mode()
+            self.entry.configure(placeholder_text="I stopped. What did I do wrong? (Correction)")
+            self.entry.focus_set()
+
+    def set_status(self, text: str, color: str = ""):
+        """Update UI to reflect state"""
+        if "Running" in text or "Executing" in text:
+            self.is_running = True
+            self.btn_action.configure(text="STOP", fg_color="#cc0000", hover_color="#990000") # Red STOP
+            self.entry.configure(placeholder_text=f"Agent is working: {text}...")
+            
+        elif "Fail" in text or "Error" in text or "Stopped" in text:
+            self.is_running = False
+            self.btn_action.configure(text="❌", fg_color="#cc0000")
+            # We let correction mode handle the input reset if needed
+            
+        elif "Complet" in text or "Success" in text:
+            self.is_running = False
+            self.btn_action.configure(text="✅", fg_color="#00cc44")
+            self.root.after(3000, self._reset_ui)
+        else:
+            self._reset_ui()
+            
+    def _reset_ui(self):
+        """Reset to idle state"""
+        self.is_running = False
+        self.btn_action.configure(text="RUN", fg_color="#0066cc", hover_color="#0052a3")
+        self.entry.configure(placeholder_text="Ask Agentic to do something...")
+            
     def focus(self):
-        """Bring window to focus"""
         self.root.deiconify()
         self.root.lift()
         self.entry.focus_set()
-    
+        
     def run(self):
-        """Start the UI main loop"""
-        log.info("UI running")
         self.root.mainloop()
-    
+
     def destroy(self):
-        """Close the window"""
         self.root.quit()
         self.root.destroy()
 
@@ -159,31 +240,25 @@ class UIController:
     def __init__(self, on_command: Callable[[str], None]):
         self.on_command = on_command
         self.ui: Optional[FloatingInputBox] = None
-        
         config = get_config()
         self.activation_hotkey = config.ui.activation_hotkey
     
     def start(self):
-        """Start UI on main thread"""
         self.ui = FloatingInputBox(self.on_command)
         log.info(f"UI started (activate with {self.activation_hotkey})")
     
     def run(self):
-        """Run UI mainloop (blocks)"""
         if self.ui:
             self.ui.run()
     
     def activate(self):
-        """Activate UI (bring to focus)"""
         if self.ui:
             self.ui.root.after(0, self.ui.focus)
     
     def set_status(self, text: str, color: str = "#00ff00"):
-        """Update status"""
         if self.ui:
             self.ui.root.after(0, lambda: self.ui.set_status(text, color))
     
     def stop(self):
-        """Stop UI"""
         if self.ui:
             self.ui.destroy()

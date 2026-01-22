@@ -36,14 +36,19 @@ from core.world_model import WorldModel
 from perception.vision_client import VisionClient
 
 from utils.logger import log
+from utils.window_manager import get_active_window_title
 
+
+from core.memory import LongTermMemory
 
 class Agent:
     """Main autonomous agent with Planner-Executor-Critic architecture"""
     
     def __init__(self):
         self.config = get_config()
+        self.memory = LongTermMemory()
         
+        # ... (rest of init) ...
         # Initialize components
         self.state = TaskState()
         self.llm = OllamaClient()
@@ -81,7 +86,16 @@ class Agent:
         self.running = False
         
         log.info("🤖 Agent 2.0 initialized (Planner-Executor-Critic)")
-    
+
+    def learn_from_feedback(self, feedback: str):
+        """Save feedback for the current/last task"""
+        # Ideally we track current_task in self.state
+        task = self.state.task if self.state.task else "General Feedback"
+        steps = [str(e) for e in self.world_model.action_history] # Ensure strings
+        
+        self.memory.save_feedback(task, feedback, steps)
+        log.info(f"🧠 Saved feedback for '{task}'")
+
     def start(self):
         """Start the agent"""
         self.kill_switch.activate()
@@ -99,7 +113,7 @@ class Agent:
         log.critical("⚠️ EMERGENCY STOP")
         self.stop()
         asyncio.create_task(self.browser_executor.cleanup())
-    
+
     async def execute_task(self, task: str) -> bool:
         """
         Execute a task using Agent 2.0 Architecture.
@@ -231,7 +245,7 @@ class Agent:
             log.error(f"Task execution failed: {e}")
             self.state.complete_task(success=False)
             return False
-    
+
     async def _observe(self) -> str:
         """Gather observation"""
         # (Simplified for brevity - reusing existing logic but writing it out cleanly)
@@ -246,8 +260,18 @@ class Agent:
         if self.browser_executor.page:
              obs_text += f"\nBROWSER: {await self.browser_executor.get_dom_summary()}"
              
+        # 🧠 AGENT 2.0: Ground Truth Active App Detection
+        active_window = get_active_window_title()
+        if active_window:
+            self.world_model.state.active_app = active_window
+            obs_text += f"\nACTIVE WINDOW TITLE: {active_window}\n"
+            
+            # Auto-update heuristics based on title
+            if "chrome" in active_window.lower() or "edge" in active_window.lower() or "firefox" in active_window.lower():
+                self.world_model.state.is_browser_open = True
+             
         return obs_text
-    
+            
     def _reason(self, step: str, observation: str, task_context: str) -> Optional[dict]:
         """Reason about a SINGLE step within the plan"""
         # Focus the prompt on the current step
@@ -256,15 +280,30 @@ class Agent:
         world_state_str += f"Start Menu Open: {self.world_model.state.is_start_menu_open}\n"
         world_state_str += f"Browser Open: {self.world_model.state.is_browser_open}"
         
+        # 🧠 RETRIEVE MEMORY TIPS
+        memory_tips = self.memory.get_relevant_feedback(task_context)
+        memory_section = ""
+        if memory_tips:
+            memory_section = f"\n🧠 MEMORY (USER TIPS):\n{memory_tips}\n"
+        
         prompt = f"""OVERALL GOAL: {task_context}
 CURRENT SUB-TASK: {step}
 WORLD STATE:
 {world_state_str}
-
+{memory_section}
 OBSERVATION:
 {observation}
 
-What is the next action to achieve the SUB-TASK?"""
+Based on the observation, what is the exact state of the world? 
+What might have gone wrong with the previous action?
+Determine the next best action.
+
+Thinking Process:
+1. Analyse the Active Window: Is it what we expect?
+2. Analyse the Visible Text: Do we see the results of previous actions?
+3. Decide: Should we retry, proceed, or fix focus?
+
+Output valid JSON action."""
         
         try:
             response = self.llm.generate(prompt, system_prompt=AGENT_SYSTEM_PROMPT_WITH_EXAMPLES)

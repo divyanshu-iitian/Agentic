@@ -13,10 +13,11 @@ from core.config import get_config
 from utils.logger import log
 
 class VisionClient:
-    def __init__(self, model_name: str = "llava"):
-        self.base_url = "http://localhost:11434/api/generate"
-        self.model = model_name
+    def __init__(self, model_name: str = None):
         self.config = get_config()
+        self.base_url = "http://localhost:11434/api/generate"
+        # Use config model if not explicitly passed, fallback to 'llava'
+        self.model = model_name or getattr(self.config.observation, "vision_model", "llava")
         
     def detect_element(self, image_path: str, element_description: str) -> Optional[Tuple[int, int]]:
         """

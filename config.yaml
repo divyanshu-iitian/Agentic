@@ -29,6 +29,7 @@ ui:
 
 # Observation Settings
 observation:
+  vision_model: "llava-phi3"  # DeepSeek-VL not found on Ollama, switched to llava-phi3 (Microsoft Phi-3 Vision) which is excellent.
   screenshot_on_action: true
   ocr_enabled: true
   ocr_languages: ["en"]
