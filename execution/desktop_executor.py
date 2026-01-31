@@ -66,8 +66,10 @@ class DesktopExecutor:
             elif action == "launch_app":
                 return self._launch_app_via_search(args)
             # 🧠 SEMANTIC ACTIONS
-            elif action == "browser_open" or action == "browser_search":
-                return self._browser_nav(args)
+            elif action == "browser_open":
+                return self._browser_open(args)
+            elif action == "browser_search":
+                return self._browser_search(args)
             elif action == "vscode_open":
                 return self._vscode_open()
             elif action == "vscode_new_file":
@@ -204,19 +206,26 @@ class DesktopExecutor:
         return {"success": True, "text": text, "x": tx, "y": ty}
     
     def _type(self, args: Dict[str, Any]) -> Dict[str, Any]:
-        """Type text with Focus Assurance & Visual Verification"""
+        """Type text. Option to auto-submit."""
         text = args["text"]
+        submit = args.get("submit", False)
         
-        # 1. Blind Click Center to ensure window body focus (Safe for 1920x1080)
-        pyautogui.click(960, 540) 
-        time.sleep(0.5)
+        # REMOVED: Blind Click Center (960, 540). 
+        # Reason: It causes the agent to lose focus of the specific input field it just clicked.
+        # The agent MUST explicitly click the target field before calling 'type'.
         
-        # 2. Type
+        # 1. Type
         time.sleep(self.type_delay)
-        pyautogui.write(text, interval=0.1) 
+        pyautogui.write(text, interval=0.05) # Slightly faster typing
         log.info(f"Typed text: {text[:50]}...")
         
-        return {"success": True, "text_length": len(text)}
+        # 2. Submit if requested
+        if submit:
+            time.sleep(0.5)
+            kb.press_and_release("enter")
+            log.info("Pressed Enter (submit=True)")
+        
+        return {"success": True, "text_length": len(text), "submitted": submit}
     
     def _scroll(self, args: Dict[str, Any]) -> Dict[str, Any]:
         """Scroll by amount (positive=up, negative=down)"""
@@ -353,40 +362,31 @@ class DesktopExecutor:
             log.error(f"Failed to launch app {app_name}: {e}")
             return {"success": False, "error": str(e)}
 
-    def _browser_nav(self, args: Dict[str, Any]) -> Dict[str, Any]:
+    def _browser_open(self, args: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Ultimate Reliability Navigation (Win+R Method).
-        
-        Why this works:
-        - Bypasses all GUI clicking/focus issues.
-        - 'Win+R' is a system-level interrupt that ALWAYS opens the Run dialog.
-        - Typing 'chrome <url>' works globally if Chrome is in PATH (standard).
+        Open a new browser window/tab using Win+R (Nuclear Option).
         """
-        url_or_query = args.get("url") or args.get("query")
-        log.info(f"🌐 Ultimate Browser Nav (Win+R): {url_or_query}")
+        url = args.get("url")
+        log.info(f"🌐 Opening Browser (Win+R): {url}")
         
         try:
-            # 1. Format URL/Query
-            if not url_or_query.startswith("http") and not "." in url_or_query:
-                # Search query -> google search url
-                import urllib.parse
-                safe_query = urllib.parse.quote(url_or_query)
-                target = f"www.google.com/search?q={safe_query}" # Start without https for run dialog usually better
-            elif not url_or_query.startswith("http"):
-                 target = url_or_query
+            # 1. Format URL
+            if not url.startswith("http"):
+                 if "." not in url:
+                      # It's likely a query mixed in as url, treat as google search
+                      target = f"google.com/search?q={url.replace(' ', '+')}"
+                 else:
+                      target = url
             else:
-                 # Strip https:// for run dialog cleanliness, though keeping it is fine
-                 target = url_or_query
-            
+                 target = url
+
             # 2. Open Run Dialog
-            # This is the "Nuclear Option" for reliability
             kb.press_and_release("win+r")
-            time.sleep(1.0) # Wait for dialog to appear
+            time.sleep(1.0) 
             
             # 3. Type Command
-            # "chrome google.com"
             command = f"chrome {target}"
-            kb.write(command, delay=0.05)
+            kb.write(command, delay=0.02)
             time.sleep(0.5)
             
             # 4. Execute
@@ -395,12 +395,34 @@ class DesktopExecutor:
             # 5. Wait for browser to launch
             time.sleep(4.0)
             
-            return {"success": True, "action": "browser_nav_win_r", "command": command}
+            return {"success": True, "action": "browser_open", "command": command}
             
         except Exception as e:
-            log.error(f"Browser nav failed: {e}")
+            log.error(f"Browser open failed: {e}")
             return {"success": False, "error": str(e)}
+
+    def _browser_search(self, args: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Navigate/Search in EXISTING browser using Ctrl+L.
+        Reliability: HIGH
+        """
+        query = args.get("query")
+        log.info(f"🔍 Browser Search (Ctrl+L): {query}")
+        
+        try:
+            # 1. Focus Address Bar
+            kb.press_and_release("ctrl+l")
+            time.sleep(0.5)
+            
+            # 2. Type Query/URL
+            kb.write(query, delay=0.02)
+            time.sleep(0.2)
+            
+            # 3. Enter
+            kb.press_and_release("enter")
+            
+            return {"success": True, "action": "browser_search", "query": query}
             
         except Exception as e:
-            log.error(f"Browser nav failed: {e}")
+            log.error(f"Browser search failed: {e}")
             return {"success": False, "error": str(e)}

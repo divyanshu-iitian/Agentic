@@ -14,6 +14,7 @@ from llm.parser import JSONParser
 from execution.actions import parse_action
 from execution.desktop_executor import DesktopExecutor
 from execution.browser_executor import BrowserExecutor
+from execution.os_executor import OSExecutor
 from planning.action_validator import ActionValidator
 from observation.screen_capture import ScreenCapture
 from safety.kill_switch import KillSwitch, ActionLimiter
@@ -51,7 +52,44 @@ class Agent:
         # ... (rest of init) ...
         # Initialize components
         self.state = TaskState()
-        self.llm = OllamaClient()
+        
+        # 🤖 LLM Client (Ollama or PersonaPlex)
+        if self.config.llm.provider == "personaplex":
+            # Check VRAM and choose appropriate version
+            import torch
+            if torch.cuda.is_available():
+                vram_gb = torch.cuda.get_device_properties(0).total_memory / 1024**3
+                log.info(f"🎮 Detected VRAM: {vram_gb:.1f} GB")
+                
+                if vram_gb < 12:
+                    # Use optimized version for <12GB VRAM
+                    from llm.personaplex_optimized import PersonaPlexClientOptimized
+                    self.llm = PersonaPlexClientOptimized(
+                        model_name=self.config.llm.model,
+                        device="auto",
+                        use_8bit=True  # 8-bit quantization
+                    )
+                    log.info("🤖 Using NVIDIA PersonaPlex (8-bit optimized)")
+                else:
+                    # Use standard version for >=12GB VRAM
+                    from llm.personaplex_client import PersonaPlexClient
+                    self.llm = PersonaPlexClient(
+                        model_name=self.config.llm.model,
+                        device="auto"
+                    )
+                    log.info("🤖 Using NVIDIA PersonaPlex (standard)")
+            else:
+                # CPU mode
+                from llm.personaplex_client import PersonaPlexClient
+                self.llm = PersonaPlexClient(
+                    model_name=self.config.llm.model,
+                    device="cpu"
+                )
+                log.info("🤖 Using NVIDIA PersonaPlex (CPU mode)")
+        else:
+            self.llm = OllamaClient()
+            log.info("🤖 Using Ollama")
+        
         self.parser = JSONParser()
         self.validator = ActionValidator()
         self.limiter = ActionLimiter()
@@ -65,6 +103,7 @@ class Agent:
         # Executors
         self.desktop_executor = DesktopExecutor(vision_client=self.vision_client, world_model=self.world_model)
         self.browser_executor = BrowserExecutor()
+        self.os_executor = OSExecutor()  # 🚀 OS-Level Power!
         
         # Perception layer
         self.screen_observer = ScreenObserver(save_observations=True)
@@ -314,8 +353,17 @@ Output valid JSON action."""
 
     async def _execute(self, action: str, args: dict) -> dict:
         """Execute action (Legacy wrapper)"""
+        # OS-level actions (MOST POWERFUL)
+        if action.startswith("os_"):
+            return self.os_executor.execute(action, args)
+        
         # Browser actions
-        if action.startswith("browser_"):
+        elif action.startswith("browser_"):
+            # 🧠 UPDATE: Route open/search to Desktop Executor (Real Chrome)
+            if action in ["browser_open", "browser_search"]:
+                 return self.desktop_executor.execute(action, args)
+            
+            # Legacy/Headless actions (extract, specific DOM clicks)
             return await self.browser_executor.execute(action, args)
         
         # Desktop actions

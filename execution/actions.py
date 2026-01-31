@@ -8,6 +8,13 @@ Ensures type safety and validation.
 from typing import Dict, Any, Literal
 from pydantic import BaseModel, Field
 
+# Import OS-level actions
+from execution.os_actions import (
+    OSOpenAppAction, OSRunCommandAction, OSOpenURLAction,
+    OSFileOperationAction, OSWindowControlAction, 
+    OSClipboardAction, OSSystemControlAction
+)
+
 
 # ============= Desktop Actions =============
 
@@ -42,7 +49,7 @@ class ClickTextAction(BaseModel):
 class TypeAction(BaseModel):
     """Type text"""
     action: Literal["type"] = "type"
-    args: Dict[str, str] = Field(...)
+    args: Dict[str, Any] = Field(...)
     
     def validate_args(self):
         assert "text" in self.args, "Missing 'text' in args"
@@ -145,13 +152,24 @@ class StopAction(BaseModel):
     args: Dict = Field(default_factory=dict)
 
 
+class PressKeyAction(BaseModel):
+    """Press a key (e.g. enter, esc, win)"""
+    action: Literal["press_key"] = "press_key"
+    args: Dict[str, str] = Field(...)
+
+    def validate_args(self):
+        assert "key" in self.args, "Missing 'key' in args"
+
+
 # ============= Union Type =============
 
 AgentAction = (
-    OpenAppAction | ClickAction | ClickTextAction | TypeAction | ScrollAction | WaitAction |
+    OpenAppAction | ClickAction | ClickTextAction | TypeAction | ScrollAction | WaitAction | PressKeyAction |
     VSCodeOpenAction | VSCodeNewFileAction | VSCodeSaveFileAction |
     BrowserOpenAction | BrowserSearchAction | BrowserClickAction | 
-    BrowserScrollAction | BrowserExtractAction | StopAction
+    BrowserScrollAction | BrowserExtractAction | StopAction |
+    OSOpenAppAction | OSRunCommandAction | OSOpenURLAction |
+    OSFileOperationAction | OSWindowControlAction | OSClipboardAction | OSSystemControlAction
 )
 
 
@@ -173,6 +191,15 @@ ACTION_TYPES = {
     "browser_scroll": BrowserScrollAction,
     "browser_extract": BrowserExtractAction,
     "stop": StopAction,
+    "press_key": PressKeyAction,
+    # OS-Level Actions
+    "os_open_app": OSOpenAppAction,
+    "os_run_command": OSRunCommandAction,
+    "os_open_url": OSOpenURLAction,
+    "os_file_operation": OSFileOperationAction,
+    "os_window_control": OSWindowControlAction,
+    "os_clipboard": OSClipboardAction,
+    "os_system_control": OSSystemControlAction,
 }
 
 

@@ -38,6 +38,7 @@ If you cannot proceed, output the STOP action.
 
 ALLOWED ACTIONS (STRICT):
 
+# Desktop Actions
 open_app
 click
 type
@@ -45,19 +46,30 @@ scroll
 wait
 launch_app
 
-
+# Semantic Actions
 vscode_open
 vscode_new_file
 vscode_save_file
 
+# Browser Actions
 browser_open
 browser_search
 browser_scroll
 browser_extract
 
+# Advanced Actions
 press_key
 click_element
 click_text
+
+# OS-Level Actions (MOST POWERFUL - Use these for maximum reliability!)
+os_open_app
+os_run_command
+os_open_url
+os_file_operation
+os_window_control
+os_clipboard
+os_system_control
 
 stop
 
@@ -113,7 +125,8 @@ type:
 {
   "action": "type",
   "args": {
-    "text": "<string>"
+    "text": "<string>",
+    "submit": <boolean>  // Optional: set to true to press Enter after typing
   }
 }
 
@@ -176,15 +189,19 @@ browser_open:
     "url": "<valid url>"
   }
 }
+# Opens Chrome using Win+R. Use this to LAUNCH Chrome with a URL.
+# After this, the browser will be open. Wait 4 seconds before next action.
 
 browser_search:
 {
   "action": "browser_search",
   "args": {
-    "query": "<search query>"
+    "query": "<search query or URL>"
   }
 }
-# NOTE: Use this for ANY search in an existing browser window (uses Ctrl+L)
+# Uses Ctrl+L to focus address bar, then types and presses Enter.
+# ALWAYS use this for navigation in an EXISTING browser window.
+# NO NEED to find input fields - Ctrl+L works everywhere!
 
 browser_click:
 {
@@ -209,6 +226,83 @@ browser_extract:
     "goal": "<what information to extract>"
   }
 }
+
+# ============= OS-LEVEL ACTIONS (MOST POWERFUL!) =============
+
+os_open_app:
+{
+  "action": "os_open_app",
+  "args": {
+    "name": "<app name: notepad, chrome, calculator, vscode, etc>"
+  }
+}
+# Uses PowerShell Start-Process - MOST RELIABLE way to open apps!
+
+os_run_command:
+{
+  "action": "os_run_command",
+  "args": {
+    "command": "<PowerShell or CMD command>",
+    "shell": "powershell",  // or "cmd"
+    "wait": true  // wait for completion
+  }
+}
+# Run ANY OS command! Examples:
+# - "Get-Process | Where-Object {$_.Name -eq 'chrome'}"
+# - "dir C:\\"
+# - "ipconfig"
+
+os_open_url:
+{
+  "action": "os_open_url",
+  "args": {
+    "url": "<any URL>"
+  }
+}
+# Opens URL in default browser using OS command - very reliable!
+
+os_file_operation:
+{
+  "action": "os_file_operation",
+  "args": {
+    "operation": "create|read|delete|copy|move",
+    "path": "<file path>",
+    "content": "<content for create/write>",
+    "destination": "<destination for copy/move>"
+  }
+}
+# File operations using OS commands
+
+os_window_control:
+{
+  "action": "os_window_control",
+  "args": {
+    "operation": "close|list",
+    "window_title": "<partial window title>"
+  }
+}
+# Control windows using PowerShell
+
+os_clipboard:
+{
+  "action": "os_clipboard",
+  "args": {
+    "operation": "copy|get",
+    "text": "<text to copy>"
+  }
+}
+# Clipboard operations using PowerShell
+
+os_system_control:
+{
+  "action": "os_system_control",
+  "args": {
+    "operation": "volume_set|get_processes|kill_process",
+    "level": <0-100 for volume>,
+    "process_name": "<process name to kill>"
+  }
+}
+# System-level controls
 
 stop:
 {
@@ -246,16 +340,34 @@ TASK EXECUTION RULES:
 - Break tasks into atomic steps.
 - Perform actions sequentially.
 - Verify outcome after each step.
-- PREFER SEMANTIC ACTIONS over raw clicks:
-  - Use vscode_open instead of open_app + clicks
-  - Use vscode_new_file instead of Ctrl+N clicks
-  - Use vscode_save_file instead of clicking menus
-- For opening apps: semantic actions are ALWAYS better
+
+🚀 OS-LEVEL ACTION PREFERENCE (CRITICAL):
+- PREFER OS-LEVEL ACTIONS for maximum reliability!
+- Use 'os_open_app' instead of 'open_app' or 'launch_app' when possible
+- Use 'os_open_url' for opening websites - it's more reliable than browser_open
+- Use 'os_run_command' for complex tasks that can be done via PowerShell
+- OS actions bypass GUI issues and work at the system level
+
+SEMANTIC ACTION PREFERENCE:
+- Use vscode_open instead of open_app + clicks
+- Use vscode_new_file instead of Ctrl+N clicks
+- Use vscode_save_file instead of clicking menus
+- For opening apps: OS actions > semantic actions > raw clicks
 - For typing code: use proper syntax and formatting
 - For creating files: use semantic actions, then type content
+- For forms/chat: Use 'type' with "submit": true to send immediately.
 - For complex tasks: plan ahead but execute one step at a time
 - Avoid unnecessary actions.
 - Do not repeat actions unless observation changes.
+
+🌐 BROWSER WORKFLOW (CRITICAL - READ THIS):
+- NEVER use Playwright or try to find input fields in the browser!
+- To open Chrome and navigate: Use 'browser_open' with the URL
+- To search/navigate in an EXISTING Chrome window: Use 'browser_search' (it uses Ctrl+L)
+- Ctrl+L ALWAYS works - it focuses the address bar instantly
+- After 'browser_open', wait 4 seconds, then use 'browser_search' if you need to navigate
+- DO NOT try to click on search boxes or address bars - just use browser_search!
+- Example workflow: browser_open → wait → browser_search("your query")
 
 COMMON APP NAMES:
 - VS Code: Use "vscode_open" action (PREFERRED)
