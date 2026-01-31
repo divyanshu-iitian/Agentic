@@ -124,19 +124,15 @@ class Agent:
         
         self.running = False
         
-        # 🎙️ Voice Engine (optional)
+        # 🎙️ Voice Narrator (Groq + Bark)
         try:
-            from voice.simple_voice import SimpleVoiceEngine
-            self.voice = SimpleVoiceEngine()
-            if self.voice.available:
-                log.info("🎙️ Voice engine enabled")
-                self.voice_enabled = True
-            else:
-                self.voice_enabled = False
-                log.info("🔇 Voice engine disabled (TTS not available)")
+            from voice.voice_narrator import VoiceNarrator
+            self.narrator = VoiceNarrator()
+            self.voice_enabled = True
+            log.info("🎙️ Voice Narrator (Groq + Bark) enabled")
         except Exception as e:
-            log.warning(f"Voice engine not available: {e}")
-            self.voice = None
+            log.warning(f"Voice Narrator not available: {e}")
+            self.narrator = None
             self.voice_enabled = False
         
         log.info("🤖 Agent 2.0 initialized (Planner-Executor-Critic)")
@@ -177,7 +173,10 @@ class Agent:
         
         # 🎙️ Voice: Acknowledge task
         if self.voice_enabled:
-            self.voice.speak(f"Starting task", rate=180)
+            # We use an async wrapper or call in thread to not block the planning phase 
+            # for the first acknowledgement, but for the rest it's sequential.
+            import threading
+            threading.Thread(target=self.narrator.say, args=(f"I'm starting the task: {task}",)).start()
         
         self.state.start_task(task)
         self.world_model.clear_task_state()
@@ -294,7 +293,7 @@ class Agent:
                     log.error(f"Failed step '{current_step}' after {max_attempts} attempts. Aborting.")
                     # 🎙️ Voice: Failure
                     if self.voice_enabled:
-                        self.voice.speak("Task failed!", rate=180)
+                        self.narrator.say(f"I'm sorry, I failed to complete the task: {current_step}")
                     self.state.complete_task(success=False)
                     return False
             
@@ -302,7 +301,7 @@ class Agent:
             
             # 🎙️ Voice: Success
             if self.voice_enabled:
-                self.voice.speak("Task complete!", rate=180)
+                self.narrator.say("I've finished everything! Task is complete.")
             
             self.state.complete_task()
             return True
