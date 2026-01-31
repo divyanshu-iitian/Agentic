@@ -173,10 +173,9 @@ class Agent:
         
         # 🎙️ Voice: Acknowledge task
         if self.voice_enabled:
-            # We use an async wrapper or call in thread to not block the planning phase 
-            # for the first acknowledgement, but for the rest it's sequential.
+            # Task start: Use FAST mode for instant feedback
             import threading
-            threading.Thread(target=self.narrator.say, args=(f"I'm starting the task: {task}",)).start()
+            threading.Thread(target=self.narrator.say, args=(f"I'm starting that for you now.", True)).start()
         
         self.state.start_task(task)
         self.world_model.clear_task_state()
@@ -310,7 +309,7 @@ class Agent:
             log.error(f"Task execution failed: {e}")
             # 🎙️ Voice: Failure
             if self.voice_enabled:
-                self.voice.speak("Task failed!", rate=180)
+                self.narrator.say("Task failed due to an error.", fast_mode=True)
             self.state.complete_task(success=False)
             return False
 

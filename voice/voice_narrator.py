@@ -5,6 +5,7 @@ Refines Ollama outputs using Groq and narrates them via Bark (Sequentially).
 
 import os
 import sys
+import threading
 from pathlib import Path
 
 # Add parent directory for imports
@@ -19,11 +20,45 @@ load_dotenv()
 
 class VoiceNarrator:
     def __init__(self):
+        from voice.simple_voice import SimpleVoiceEngine
         self.bark = BarkVoiceEngine()
+        self.fast_voice = SimpleVoiceEngine()
         self.groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
-        # Using Llama 3 70B for better conversational output than prompt-guard
-        self.model = "llama3-70b-8192" 
-        log.info("🎙️ Voice Narrator initialized with Groq + Bark")
+        self.model = "llama-3.1-8b-instant" 
+        self.lock = threading.Lock()
+        log.info("🎙️ Voice Narrator initialized (Fast + Human Mode)")
+
+    def classify_intent(self, user_text: str) -> dict:
+        """
+        Classifies if the user wants a casual chat or a computer task.
+        Returns: {"type": "CHAT"|"TASK", "task": "..."|None, "response": "..."|None}
+        """
+        try:
+            prompt = f"""
+            System: You are an AI Desktop Assistant. Classify the user's intent.
+            - If it's a casual conversation/greeting/question, set type to 'CHAT' and provide a short, human-like response with emotional tags like [laugh] or [pause].
+            - If it's a request to perform a task on the computer (open app, search, etc.), set type to 'TASK' and extract the specific task.
+            
+            User Input: "{user_text}"
+            
+            Return ONLY a JSON object:
+            {{ "type": "CHAT" or "TASK", "task": "extracted task if TASK else null", "response": "human response if CHAT else null" }}
+            """
+
+            completion = self.groq_client.chat.completions.create(
+                model=self.model,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.3, # Low temp for classification
+                response_format={ "type": "json_object" }
+            )
+            
+            import json
+            result = json.loads(completion.choices[0].message.content)
+            log.info(f"🧠 Intent Analysis: {result}")
+            return result
+        except Exception as e:
+            log.error(f"Intent classification failed: {e}")
+            return {"type": "CHAT", "task": None, "response": "I'm sorry, I'm having trouble understanding."}
 
     def refine_response(self, raw_input: str) -> str:
         """Refines the raw terminal/agent output into human speech using Groq."""
@@ -53,18 +88,28 @@ class VoiceNarrator:
             log.error(f"Groq refinement failed: {e}")
             return raw_input # Fallback
 
-    def say(self, raw_text: str):
-        """Sequentially refines and speaks the text."""
-        # 1. Refine with Groq
-        human_text = self.refine_response(raw_text)
-        
-        # 2. Generate with Bark
-        audio_file = self.bark.generate(human_text)
-        
-        # 3. Play (Synchronous - will wait until finished on Windows)
-        if audio_file:
-            log.info(f"🔊 Narrating: {human_text}")
-            self.bark.play(audio_file)
+    def say(self, raw_text: str, fast_mode: bool = False):
+        """
+        Narrates text. 
+        If fast_mode=True: Uses pyttsx3 (Instant).
+        If fast_mode=False: Uses Groq + Bark (Human but slow).
+        """
+        if fast_mode:
+            log.info(f"⚡ Fast Speak: {raw_text}")
+            self.fast_voice.speak(raw_text)
+            return
+
+        with self.lock:
+            # 1. Refine with Groq
+            human_text = self.refine_response(raw_text)
+            
+            # 2. Generate with Bark (Memory only) - Small models used
+            audio_array = self.bark.generate(human_text, save_file=False)
+            
+            # 3. Play Direct (In-memory)
+            if audio_array is not None:
+                log.info(f"🔊 Direct Narration: {human_text}")
+                self.bark.play_direct(audio_array)
 
 if __name__ == "__main__":
     # Test
