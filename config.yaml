@@ -3,11 +3,11 @@
 # LLM Settings
 # Providers: "ollama" (local Ollama) or "personaplex" (NVIDIA PersonaPlex via HuggingFace)
 llm:
-  provider: "personaplex"  # ✅ ENABLED - Using PersonaPlex!
-  model: "nvidia/personaplex-7b-v1"  # PersonaPlex model
-  base_url: "http://127.0.0.1:11434"  # Only for Ollama (ignored for PersonaPlex)
+  provider: "ollama"  # Using Ollama - auto-detects GPU!
+  model: "qwen2.5-coder:7b"  # 7B model, will use RTX 2050
+  base_url: "http://127.0.0.1:11434"  # Ollama server
   temperature: 0.7  # Good for conversations
-  max_tokens: 256  # Optimized for 8GB VRAM
+  max_tokens: 256  # Optimized for responses
   timeout: 300  # 5 minutes
 
 # Safety Settings

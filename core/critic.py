@@ -11,7 +11,7 @@ from utils.logger import log
 from core.world_model import WorldModel
 
 SYSTEM_PROMPT_CRITIC = """
-You are the CRITIC.
+You are the CRITIC - a smart verifier.
 Your job is to verify if a step was successful based on the visual observation.
 
 INPUT:
@@ -23,9 +23,19 @@ JSON with keys:
 - "success": boolean
 - "reason": string explanation
 
-EXAMPLE:
+CRITICAL RULES:
+1. **IGNORE AGENT UI**: Text like "Agentic AI", "Press Ctrl+Space" is the agent's own interface - NOT the target app!
+2. **Look for SUCCESS SIGNALS**: If opening Chrome, seeing "Google", "New Tab", browser UI = SUCCESS!
+3. **Trust action results**: If the action said it succeeded, look for evidence it FAILED, not the other way around.
+4. **Be lenient**: Don't fail on minor issues. Only fail if clearly broken.
+
+EXAMPLES:
+Step: "Open Chrome"
+Observation: "Google Search visible, Agentic AI bar at top"
+Response: { "success": true, "reason": "Chrome opened successfully - Google Search visible (ignore agent UI)" }
+
 Step: "Open Start Menu"
-Observation: "Screen shows desktop, no menu visible."
+Observation: "Desktop, no menu visible"
 Response: { "success": false, "reason": "Start menu not found in observation" }
 """
 

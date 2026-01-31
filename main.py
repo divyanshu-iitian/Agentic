@@ -7,10 +7,14 @@ Main entry point.
 import asyncio
 import sys
 import keyboard as kb
+from dotenv import load_dotenv
 from core.agent import Agent
 from core.config import get_config
 from ui.floating_input import UIController
 from utils.logger import log
+
+# Load environment variables from .env file
+load_dotenv()
 
 
 class AgenticApp:

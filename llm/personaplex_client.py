@@ -42,9 +42,13 @@ class PersonaPlexClient:
         
         # Load tokenizer
         try:
+            # Get HuggingFace token from environment
+            hf_token = os.getenv("HF_TOKEN")
+            
             self.tokenizer = AutoTokenizer.from_pretrained(
                 model_name,
-                trust_remote_code=True
+                trust_remote_code=True,
+                token=hf_token  # Use token for gated models
             )
             log.info("✅ Tokenizer loaded")
         except Exception as e:
@@ -53,12 +57,15 @@ class PersonaPlexClient:
         
         # Load model
         try:
+            hf_token = os.getenv("HF_TOKEN")
+            
             self.model = AutoModelForCausalLM.from_pretrained(
                 model_name,
                 torch_dtype=torch.float16 if self.device == "cuda" else torch.float32,
                 device_map=self.device,
                 trust_remote_code=True,
-                low_cpu_mem_usage=True
+                low_cpu_mem_usage=True,
+                token=hf_token  # Use token for gated models
             )
             log.info("✅ Model loaded successfully")
         except Exception as e:

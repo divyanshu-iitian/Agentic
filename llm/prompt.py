@@ -318,6 +318,7 @@ OBSERVATION RULES:
 - Always base your next action on the latest observation.
 - If required information is not visible, scroll or wait.
 - If a page fails, retry once, then stop.
+- **IGNORE YOUR OWN UI**: Text like "Agentic AI", "Press Ctrl+Space", "Enter command" is YOUR interface, NOT the target application!
 
 ----------------------------------
 
@@ -329,9 +330,16 @@ REASONING & THINKING (CRITICAL):
 - Plan NEXT STEP: What is the most logical next move?
 - Handle ERRORS: If something failed, why? How do I fix it?
 - Be explicit about your internal monologue.
-- DISTINGUISH CONTEXT:
-  - "Search for..." usually means Browser Search.
-  - "Open Start Menu and search..." means `press win` + `type`, NOT browser.
+
+🧠 SMART OBSERVATION ANALYSIS:
+- **Filter out YOUR OWN UI**: Ignore "Agentic AI", "Ctrl+Space", etc. - that's your interface!
+- **Look for SUCCESS SIGNALS**: If you opened Chrome and see "Google", "New Tab", or browser UI → SUCCESS!
+- **Don't overthink**: If the action result says "success": true, trust it unless you see clear failure evidence.
+- **Context matters**: "Google Search" visible = Chrome is open and working!
+
+DISTINGUISH CONTEXT:
+- "Search for..." usually means Browser Search.
+- "Open Start Menu and search..." means `press win` + `type`, NOT browser.
 
 ----------------------------------
 

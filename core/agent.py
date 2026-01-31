@@ -124,6 +124,21 @@ class Agent:
         
         self.running = False
         
+        # 🎙️ Voice Engine (optional)
+        try:
+            from voice.simple_voice import SimpleVoiceEngine
+            self.voice = SimpleVoiceEngine()
+            if self.voice.available:
+                log.info("🎙️ Voice engine enabled")
+                self.voice_enabled = True
+            else:
+                self.voice_enabled = False
+                log.info("🔇 Voice engine disabled (TTS not available)")
+        except Exception as e:
+            log.warning(f"Voice engine not available: {e}")
+            self.voice = None
+            self.voice_enabled = False
+        
         log.info("🤖 Agent 2.0 initialized (Planner-Executor-Critic)")
 
     def learn_from_feedback(self, feedback: str):
@@ -159,6 +174,10 @@ class Agent:
         Flow: Plan -> Loop [Execute Step -> Verify] -> Done
         """
         log.info(f"📋 New task: {task}")
+        
+        # 🎙️ Voice: Acknowledge task
+        if self.voice_enabled:
+            self.voice.speak(f"Starting task", rate=180)
         
         self.state.start_task(task)
         self.world_model.clear_task_state()
@@ -273,15 +292,26 @@ class Agent:
                             
                 if not step_success:
                     log.error(f"Failed step '{current_step}' after {max_attempts} attempts. Aborting.")
+                    # 🎙️ Voice: Failure
+                    if self.voice_enabled:
+                        self.voice.speak("Task failed!", rate=180)
                     self.state.complete_task(success=False)
                     return False
             
-            log.info("🎉 Task Completed Successfully!")
-            self.state.complete_task(success=True)
+            log.info("✅ Task completed successfully")
+            
+            # 🎙️ Voice: Success
+            if self.voice_enabled:
+                self.voice.speak("Task complete!", rate=180)
+            
+            self.state.complete_task()
             return True
             
         except Exception as e:
             log.error(f"Task execution failed: {e}")
+            # 🎙️ Voice: Failure
+            if self.voice_enabled:
+                self.voice.speak("Task failed!", rate=180)
             self.state.complete_task(success=False)
             return False
 
