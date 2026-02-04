@@ -21,12 +21,14 @@ load_dotenv()
 class VoiceNarrator:
     def __init__(self):
         from voice.simple_voice import SimpleVoiceEngine
+        from voice.voice_cache_manager import VoiceCacheManager
         self.bark = BarkVoiceEngine()
         self.fast_voice = SimpleVoiceEngine()
+        self.cache_manager = VoiceCacheManager(voice_engine=self.bark)
         self.groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
         self.model = "llama-3.1-8b-instant" 
         self.lock = threading.Lock()
-        log.info("Voice Narrator initialized (Fast + Human Mode)")
+        log.info("Voice Narrator initialized (Instant Cache + Hybrid Mode)")
 
     def classify_intent(self, user_text: str) -> dict:
         """
@@ -91,8 +93,9 @@ class VoiceNarrator:
     def say(self, raw_text: str, fast_mode: bool = False):
         """
         Narrates text. 
-        If fast_mode=True: Uses pyttsx3 (Instant).
-        If fast_mode=False: Uses Groq + Bark (Human but slow).
+        1. Fast Mode: pyttsx3 (Instant)
+        2. Cache Mode: Stitching cached words/emotions (Instant Human)
+        3. Generative Mode: Full Bark generation (Slow fallback)
         """
         if fast_mode:
             log.info(f"Fast Speak: {raw_text}")
@@ -100,15 +103,24 @@ class VoiceNarrator:
             return
 
         with self.lock:
-            # 1. Refine with Groq
+            # 1. Refine text
             human_text = self.refine_response(raw_text)
             
-            # 2. Generate with Bark (Memory only) - Small models used
+            # 2. Try Instant Assembly (Cache)
+            try:
+                log.info(f"Attempting instant assembly for: {human_text}")
+                assembled_path = self.cache_manager.assemble_sentence(human_text)
+                if assembled_path:
+                    log.info(f"Instant Assembly Successful: {assembled_path}")
+                    self.bark.play(assembled_path, delete_after=False)
+                    return
+            except Exception as e:
+                log.warning(f"Instant assembly failed, falling back to generative: {e}")
+
+            # 3. Fallback to Full Generation (Slow)
             audio_array = self.bark.generate(human_text, save_file=False)
-            
-            # 3. Play Direct (In-memory)
             if audio_array is not None:
-                log.info(f"Direct Narration: {human_text}")
+                log.info(f"Direct Narration (Fallback): {human_text}")
                 self.bark.play_direct(audio_array)
 
 if __name__ == "__main__":
