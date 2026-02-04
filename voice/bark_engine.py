@@ -19,7 +19,7 @@ def patched_load(*args, **kwargs):
     kwargs['weights_only'] = False
     return original_load(*args, **kwargs)
 torch.load = patched_load
-log.info("🐒 Monkeypatched torch.load for Bark compatibility")
+log.info("Monkeypatched torch.load for Bark compatibility")
 
 from bark import SAMPLE_RATE, generate_audio, preload_models
 from scipy.io.wavfile import write as write_wav

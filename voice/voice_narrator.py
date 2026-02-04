@@ -26,7 +26,7 @@ class VoiceNarrator:
         self.groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
         self.model = "llama-3.1-8b-instant" 
         self.lock = threading.Lock()
-        log.info("🎙️ Voice Narrator initialized (Fast + Human Mode)")
+        log.info("Voice Narrator initialized (Fast + Human Mode)")
 
     def classify_intent(self, user_text: str) -> dict:
         """
@@ -54,7 +54,7 @@ class VoiceNarrator:
             
             import json
             result = json.loads(completion.choices[0].message.content)
-            log.info(f"🧠 Intent Analysis: {result}")
+            log.info(f"Intent Analysis: {result}")
             return result
         except Exception as e:
             log.error(f"Intent classification failed: {e}")
@@ -82,7 +82,7 @@ class VoiceNarrator:
             )
             
             refined_text = completion.choices[0].message.content.strip()
-            log.info(f"🤖 Groq Refined: {refined_text}")
+            log.info(f"Groq Refined: {refined_text}")
             return refined_text
         except Exception as e:
             log.error(f"Groq refinement failed: {e}")
@@ -95,7 +95,7 @@ class VoiceNarrator:
         If fast_mode=False: Uses Groq + Bark (Human but slow).
         """
         if fast_mode:
-            log.info(f"⚡ Fast Speak: {raw_text}")
+            log.info(f"Fast Speak: {raw_text}")
             self.fast_voice.speak(raw_text)
             return
 
@@ -108,7 +108,7 @@ class VoiceNarrator:
             
             # 3. Play Direct (In-memory)
             if audio_array is not None:
-                log.info(f"🔊 Direct Narration: {human_text}")
+                log.info(f"Direct Narration: {human_text}")
                 self.bark.play_direct(audio_array)
 
 if __name__ == "__main__":
