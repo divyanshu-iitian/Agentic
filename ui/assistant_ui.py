@@ -32,63 +32,65 @@ class AssistantUI(ctk.CTk):
         self.setup_ui()
 
     def setup_ui(self):
-        # Header with Gradient-like feel
-        self.header = ctk.CTkFrame(self, height=60, corner_radius=0, fg_color="#121212")
+        # Professional Header
+        self.header = ctk.CTkFrame(self, height=70, corner_radius=0, fg_color="#0F172A") # Deep Slate
         self.header.pack(fill="x", side="top")
         
-        self.title_label = ctk.CTkLabel(self.header, text="ANUDESHAK", font=("Inter", 18, "bold"), text_color="#00d2ff")
-        self.title_label.pack(side="left", padx=20)
+        self.title_label = ctk.CTkLabel(self.header, text="ANUDESHAK", font=("Inter", 20, "bold"), text_color="#38BDF8")
+        self.title_label.pack(side="left", padx=25)
 
-        self.collapse_btn = ctk.CTkButton(self.header, text="—", width=30, height=30, corner_radius=15, 
-                                         command=self.toggle_collapse, fg_color="#333", hover_color="#444")
-        self.collapse_btn.pack(side="right", padx=15)
+        self.collapse_btn = ctk.CTkButton(self.header, text="—", width=35, height=35, corner_radius=10, 
+                                         command=self.toggle_collapse, fg_color="#1E293B", hover_color="#334155")
+        self.collapse_btn.pack(side="right", padx=20)
 
-        # Chat Area (improved spacing)
-        self.chat_area = ctk.CTkTextbox(self, corner_radius=20, border_width=1, border_color="#222", 
-                                        fg_color="#0a0a0a", font=("Inter", 13), text_color="#eee")
-        self.chat_area.pack(fill="both", expand=True, padx=15, pady=10)
-        self.chat_area.insert("0.0", "AI: Hello! How can I help you today?\n\n")
+        # Chat Area (Minimalist & Clean)
+        self.chat_area = ctk.CTkTextbox(self, corner_radius=15, border_width=1, border_color="#1E293B", 
+                                        fg_color="#020617", font=("Inter", 14), text_color="#F1F5F9")
+        self.chat_area.pack(fill="both", expand=True, padx=20, pady=15)
+        self.chat_area.insert("0.0", "SYSTEM: Anudeshak is active and ready.\n\n")
         self.chat_area.configure(state="disabled")
 
-        # Input Area (Mic + Entry + Send)
+        # Command & Input Section
         self.input_frame = ctk.CTkFrame(self, fg_color="transparent")
-        self.input_frame.pack(fill="x", side="bottom", padx=15, pady=(0, 20))
+        self.input_frame.pack(fill="x", side="bottom", padx=20, pady=(0, 25))
 
-        # Bottom Row: Mic and Entry side-by-side
-        self.entry_frame = ctk.CTkFrame(self.input_frame, fg_color="transparent")
-        self.entry_frame.pack(fill="x", pady=(0, 10))
+        # Modern Search-bar Style Input
+        self.entry_frame = ctk.CTkFrame(self.input_frame, fg_color="#0F172A", corner_radius=15, border_width=1, border_color="#1E293B")
+        self.entry_frame.pack(fill="x", pady=(0, 12))
 
-        self.user_entry = ctk.CTkEntry(self.entry_frame, placeholder_text="Type a message...", 
-                                       height=45, corner_radius=20, border_color="#333", fg_color="#111")
-        self.user_entry.pack(side="left", fill="x", expand=True, padx=(0, 10))
+        self.user_entry = ctk.CTkEntry(self.entry_frame, placeholder_text="Ask Anudeshak anything...", 
+                                       height=50, corner_radius=15, border_width=0, fg_color="transparent", font=("Inter", 13))
+        self.user_entry.pack(side="left", fill="x", expand=True, padx=(10, 0))
         self.user_entry.bind("<Return>", lambda e: self.send_text())
 
-        self.send_btn = ctk.CTkButton(self.entry_frame, text="➢", width=45, height=45, corner_radius=22,
-                                      fg_color="#00d2ff", hover_color="#00a8cc", command=self.send_text)
-        self.send_btn.pack(side="right")
+        self.send_btn = ctk.CTkButton(self.entry_frame, text="SEND", width=70, height=36, corner_radius=10,
+                                      fg_color="#0284C7", hover_color="#0369A1", font=("Inter", 12, "bold"), command=self.send_text)
+        self.send_btn.pack(side="right", padx=7)
 
-        self.mic_btn = ctk.CTkButton(self.input_frame, text="🎤 HOLD TO RECORD", height=50, corner_radius=25, 
-                                     font=("Inter", 14, "bold"), fg_color="#9d50bb", hover_color="#7a3e91",
-                                     command=self.start_listening)
+        # Professional Record Button
+        self.mic_btn = ctk.CTkButton(self.input_frame, text="V O I C E   M O D E", height=55, corner_radius=15, 
+                                     font=("Inter", 13, "bold"), fg_color="#0F172A", border_width=1, border_color="#1E293B",
+                                     hover_color="#1E293B", command=self.start_listening)
         self.mic_btn.pack(fill="x")
 
     def add_message(self, text, sender="AI"):
         self.chat_area.configure(state="normal")
-        tag = "👤 YOU" if sender == "YOU" else "🤖 AI"
-        self.chat_area.insert("end", f"{tag}: {text}\n\n")
+        tag = "USER" if sender == "YOU" else "ANUDESHAK"
+        self.chat_area.insert("end", f"{tag}\n", "label")
+        self.chat_area.insert("end", f"{text}\n\n")
         self.chat_area.see("end")
         self.chat_area.configure(state="disabled")
 
     def toggle_collapse(self):
         if not self.is_collapsed:
-            self.geometry("400x60")
+            self.geometry("400x70")
             self.chat_area.pack_forget()
             self.input_frame.pack_forget()
             self.collapse_btn.configure(text="+")
         else:
             self.geometry("400x550")
-            self.chat_area.pack(fill="both", expand=True, padx=15, pady=10)
-            self.input_frame.pack(fill="x", side="bottom", padx=15, pady=(0, 20))
+            self.chat_area.pack(fill="both", expand=True, padx=20, pady=15)
+            self.input_frame.pack(fill="x", side="bottom", padx=20, pady=(0, 25))
             self.collapse_btn.configure(text="—")
         self.is_collapsed = not self.is_collapsed
 
@@ -100,12 +102,12 @@ class AssistantUI(ctk.CTk):
             threading.Thread(target=self.process_input, args=(text,)).start()
 
     def start_listening(self):
-        self.mic_btn.configure(text="👂 LISTENING...", state="disabled", fg_color="#d32f2f")
+        self.mic_btn.configure(text="LISTENING...", state="disabled", fg_color="#7F1D1D")
         threading.Thread(target=self.start_voice_process).start()
 
     def start_voice_process(self):
         recording = self.listener.record_until_silence(duration=5)
-        self.after(0, lambda: self.mic_btn.configure(text="🤔 TRANSCRIBING..."))
+        self.after(0, lambda: self.mic_btn.configure(text="PROCESSING..."))
         user_text = self.listener.transcribe(recording)
         if user_text:
             self.after(0, lambda: self.add_message(user_text, "YOU"))
@@ -122,17 +124,16 @@ class AssistantUI(ctk.CTk):
             self.narrator.say(response, skip_refine=True) 
         else:
             task = intent["task"]
-            self.after(0, lambda: self.add_message(f"Extracted Task: {task}", "AI"))
-            self.after(0, lambda: self.add_message("Agent is performing the task...", "AI"))
+            self.after(0, lambda: self.add_message(f"Starting Task: {task}", "AI"))
             
             def run_task():
                 asyncio.run(self.agent.run(task))
-                self.after(0, lambda: self.add_message("Task complete!", "AI"))
+                self.after(0, lambda: self.add_message("Task completed successfully.", "AI"))
             
             threading.Thread(target=run_task).start()
 
     def reset_mic(self):
-        self.mic_btn.configure(text="🎤 START TALKING", state="normal", fg_color="#9d50bb")
+        self.mic_btn.configure(text="V O I C E   M O D E", state="normal", fg_color="#0F172A")
 
 if __name__ == "__main__":
     from core.agent import Agent
