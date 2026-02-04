@@ -119,7 +119,7 @@ class AssistantUI(ctk.CTk):
         if intent["type"] == "CHAT":
             response = intent["response"]
             self.after(0, lambda: self.add_message(response, "AI"))
-            self.narrator.say(response) 
+            self.narrator.say(response, skip_refine=True) 
         else:
             task = intent["task"]
             self.after(0, lambda: self.add_message(f"Extracted Task: {task}", "AI"))

@@ -90,11 +90,10 @@ class VoiceNarrator:
             log.error(f"Groq refinement failed: {e}")
             return raw_input # Fallback
 
-    def say(self, raw_text: str, fast_mode: bool = False):
+    def say(self, raw_text: str, fast_mode: bool = False, skip_refine: bool = False):
         """
         Narrates text dynamically.
-        - If cached: Plays instantly in a sequence.
-        - If not: Generates, caches, then plays.
+        - skip_refine: If True, uses raw_text as-is (good for already-refined chat).
         """
         if fast_mode:
             log.info(f"Anudeshak Fast Speak: {raw_text}")
@@ -102,9 +101,13 @@ class VoiceNarrator:
             return
 
         with self.lock:
-            # 1. Refine text with Groq (Anudeshak style)
-            human_text = self.refine_response(raw_text)
-            log.info(f"Anudeshak Refined: {human_text}")
+            # 1. Refine text only if needed
+            if skip_refine:
+                human_text = raw_text
+            else:
+                human_text = self.refine_response(raw_text)
+            
+            log.info(f"Anudeshak Speaking: {human_text}")
             
             # 2. Assemble the entire response fluently
             try:
