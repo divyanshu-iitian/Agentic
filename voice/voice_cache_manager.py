@@ -4,6 +4,19 @@ Provides instant human-like speech by stitching pre-generated audio clips.
 """
 
 import os
+import sys
+
+# 🛠️ Python 3.13+ Compatibility Hack
+# audioop was removed in 3.13, pydub needs it.
+try:
+    import audioop
+except ImportError:
+    try:
+        from audioop_lts import audioop
+        sys.modules['audioop'] = audioop
+    except ImportError:
+        pass
+
 import re
 import numpy as np
 from pathlib import Path
