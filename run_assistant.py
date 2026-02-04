@@ -8,7 +8,7 @@ from ui.assistant_ui import AssistantUI
 from utils.logger import log
 
 def main():
-    log.info("Starting Aether AI Assistant...")
+    log.info("Starting Anudeshak Assistant...")
     
     # Initialize Engine (Agent handles its own LLM init)
     agent = Agent()
@@ -16,8 +16,7 @@ def main():
     # Initialize UI
     app = AssistantUI(agent)
     
-    log.info("Voice Narrator initialized (Fast + Human Mode)")
-    log.info("UI Ready! Click START TALKING to begin.")
+    log.info("UI Ready! Click START TALKING or Type to begin.")
     app.mainloop()
 
 if __name__ == "__main__":

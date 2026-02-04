@@ -19,7 +19,7 @@ class AssistantUI(ctk.CTk):
         self.narrator = VoiceNarrator()
 
         # UI Setup
-        self.title("Aether AI")
+        self.title("Anudeshak")
         self.geometry("400x550+1400+400") # Position bottom-right
         self.overrideredirect(True) # Frameless
         self.attributes("-topmost", True)
@@ -36,7 +36,7 @@ class AssistantUI(ctk.CTk):
         self.header = ctk.CTkFrame(self, height=60, corner_radius=0, fg_color="#121212")
         self.header.pack(fill="x", side="top")
         
-        self.title_label = ctk.CTkLabel(self.header, text="AETHER AI", font=("Inter", 18, "bold"), text_color="#00d2ff")
+        self.title_label = ctk.CTkLabel(self.header, text="ANUDESHAK", font=("Inter", 18, "bold"), text_color="#00d2ff")
         self.title_label.pack(side="left", padx=20)
 
         self.collapse_btn = ctk.CTkButton(self.header, text="—", width=30, height=30, corner_radius=15, 

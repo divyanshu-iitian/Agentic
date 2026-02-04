@@ -92,36 +92,30 @@ class VoiceNarrator:
 
     def say(self, raw_text: str, fast_mode: bool = False):
         """
-        Narrates text. 
-        1. Fast Mode: pyttsx3 (Instant)
-        2. Cache Mode: Stitching cached words/emotions (Instant Human)
-        3. Generative Mode: Full Bark generation (Slow fallback)
+        Narrates text dynamically.
+        - If cached: Plays instantly in a sequence.
+        - If not: Generates, caches, then plays.
         """
         if fast_mode:
-            log.info(f"Fast Speak: {raw_text}")
+            log.info(f"Anudeshak Fast Speak: {raw_text}")
             self.fast_voice.speak(raw_text)
             return
 
         with self.lock:
-            # 1. Refine text
+            # 1. Refine text with Groq (Anudeshak style)
             human_text = self.refine_response(raw_text)
+            log.info(f"Anudeshak Refined: {human_text}")
             
-            # 2. Try Instant Assembly (Cache)
+            # 2. Assemble the entire response fluently
             try:
-                log.info(f"Attempting instant assembly for: {human_text}")
-                assembled_path = self.cache_manager.assemble_sentence(human_text)
-                if assembled_path:
-                    log.info(f"Instant Assembly Successful: {assembled_path}")
-                    self.bark.play(assembled_path, delete_after=False)
-                    return
+                full_audio = self.cache_manager.assemble_sentence(human_text)
+                if full_audio is not None:
+                    log.info("Anudeshak is speaking fluently...")
+                    self.bark.play_direct(full_audio)
+                else:
+                    log.warning("No audio clips found/generated for the response.")
             except Exception as e:
-                log.warning(f"Instant assembly failed, falling back to generative: {e}")
-
-            # 3. Fallback to Full Generation (Slow)
-            audio_array = self.bark.generate(human_text, save_file=False)
-            if audio_array is not None:
-                log.info(f"Direct Narration (Fallback): {human_text}")
-                self.bark.play_direct(audio_array)
+                log.error(f"Anudeshak voice playback failed: {e}")
 
 if __name__ == "__main__":
     # Test
