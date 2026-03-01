@@ -1,33 +1,25 @@
 # Core Dependencies
 python-dotenv==1.0.0
-pyyaml>=6.0.1
+pyyaml==6.0.1
 
 # LLM Integration
 ollama==0.1.6
 requests==2.31.0
 
-# NVIDIA PersonaPlex (optional - for local HuggingFace model)
-transformers>=4.35.0
-torch>=2.0.0
-accelerate>=0.24.0
-bitsandbytes>=0.41.0  # For 8-bit quantization (8GB VRAM support)
-
 # Desktop Automation
 pyautogui==0.9.54
 keyboard==0.13.5
 mouse==0.7.1
-pillow>=10.2.0
+pillow==10.2.0
 
 # Browser Automation
 playwright==1.41.2
 
 # OCR and Vision
 easyocr==1.7.0
-opencv-python>=4.9.0.80
+opencv-python==4.9.0.80
 
 # UI
-customtkinter>=5.2.0
-pystray>=0.19.5
 # Tkinter is built-in with Python
 
 # Utilities

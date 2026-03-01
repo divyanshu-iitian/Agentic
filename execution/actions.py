@@ -8,13 +8,6 @@ Ensures type safety and validation.
 from typing import Dict, Any, Literal
 from pydantic import BaseModel, Field
 
-# Import OS-level actions
-from execution.os_actions import (
-    OSOpenAppAction, OSRunCommandAction, OSOpenURLAction,
-    OSFileOperationAction, OSWindowControlAction, 
-    OSClipboardAction, OSSystemControlAction
-)
-
 
 # ============= Desktop Actions =============
 
@@ -37,19 +30,10 @@ class ClickAction(BaseModel):
         assert "y" in self.args, "Missing 'y' in args"
 
 
-class ClickTextAction(BaseModel):
-    """Click text using OCR"""
-    action: Literal["click_text"] = "click_text"
-    args: Dict[str, str] = Field(...)
-    
-    def validate_args(self):
-        assert "text" in self.args, "Missing 'text' in args"
-
-
 class TypeAction(BaseModel):
     """Type text"""
     action: Literal["type"] = "type"
-    args: Dict[str, Any] = Field(...)
+    args: Dict[str, str] = Field(...)
     
     def validate_args(self):
         assert "text" in self.args, "Missing 'text' in args"
@@ -95,6 +79,36 @@ class VSCodeSaveFileAction(BaseModel):
     def validate_args(self):
         # filename is optional
         pass
+
+
+# ============= 🐙 GITHUB ACTIONS =============
+
+class GitHubContributeAction(BaseModel):
+    """Make an open source contribution"""
+    action: Literal["github_contribute"] = "github_contribute"
+    args: Dict[str, Any] = Field(default_factory=dict)
+    
+    def validate_args(self):
+        pass  # All parameters are optional
+
+
+class GitHubSearchProjectsAction(BaseModel):
+    """Search for GitHub projects"""
+    action: Literal["github_search_projects"] = "github_search_projects"
+    args: Dict[str, Any] = Field(default_factory=dict)
+    
+    def validate_args(self):
+        pass  # All parameters are optional
+
+
+class GitHubCreatePRAction(BaseModel):
+    """Create a pull request"""
+    action: Literal["github_create_pr"] = "github_create_pr"
+    args: Dict[str, Any] = Field(...)
+    
+    def validate_args(self):
+        assert "repo" in self.args, "Missing 'repo' in args"
+        assert "title" in self.args, "Missing 'title' in args"
 
 
 # ============= Browser Actions =============
@@ -152,24 +166,14 @@ class StopAction(BaseModel):
     args: Dict = Field(default_factory=dict)
 
 
-class PressKeyAction(BaseModel):
-    """Press a key (e.g. enter, esc, win)"""
-    action: Literal["press_key"] = "press_key"
-    args: Dict[str, str] = Field(...)
-
-    def validate_args(self):
-        assert "key" in self.args, "Missing 'key' in args"
-
-
 # ============= Union Type =============
 
 AgentAction = (
-    OpenAppAction | ClickAction | ClickTextAction | TypeAction | ScrollAction | WaitAction | PressKeyAction |
+    OpenAppAction | ClickAction | TypeAction | ScrollAction | WaitAction |
     VSCodeOpenAction | VSCodeNewFileAction | VSCodeSaveFileAction |
+    GitHubContributeAction | GitHubSearchProjectsAction | GitHubCreatePRAction |
     BrowserOpenAction | BrowserSearchAction | BrowserClickAction | 
-    BrowserScrollAction | BrowserExtractAction | StopAction |
-    OSOpenAppAction | OSRunCommandAction | OSOpenURLAction |
-    OSFileOperationAction | OSWindowControlAction | OSClipboardAction | OSSystemControlAction
+    BrowserScrollAction | BrowserExtractAction | StopAction
 )
 
 
@@ -178,28 +182,21 @@ AgentAction = (
 ACTION_TYPES = {
     "open_app": OpenAppAction,
     "click": ClickAction,
-    "click_text": ClickTextAction,
     "type": TypeAction,
     "scroll": ScrollAction,
     "wait": WaitAction,
     "vscode_open": VSCodeOpenAction,
     "vscode_new_file": VSCodeNewFileAction,
     "vscode_save_file": VSCodeSaveFileAction,
+    "github_contribute": GitHubContributeAction,
+    "github_search_projects": GitHubSearchProjectsAction,
+    "github_create_pr": GitHubCreatePRAction,
     "browser_open": BrowserOpenAction,
     "browser_search": BrowserSearchAction,
     "browser_click": BrowserClickAction,
     "browser_scroll": BrowserScrollAction,
     "browser_extract": BrowserExtractAction,
     "stop": StopAction,
-    "press_key": PressKeyAction,
-    # OS-Level Actions
-    "os_open_app": OSOpenAppAction,
-    "os_run_command": OSRunCommandAction,
-    "os_open_url": OSOpenURLAction,
-    "os_file_operation": OSFileOperationAction,
-    "os_window_control": OSWindowControlAction,
-    "os_clipboard": OSClipboardAction,
-    "os_system_control": OSSystemControlAction,
 }
 
 

@@ -42,7 +42,6 @@ class UIConfig(BaseModel):
 
 class ObservationConfig(BaseModel):
     """Observation settings"""
-    vision_model: str = "llava"
     screenshot_on_action: bool = True
     ocr_enabled: bool = True
     ocr_languages: List[str] = Field(default_factory=lambda: ["en"])

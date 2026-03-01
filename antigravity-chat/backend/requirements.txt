@@ -1,0 +1,7 @@
+fastapi
+uvicorn
+groq
+python-dotenv
+edge-tts
+pydantic
+aiofiles

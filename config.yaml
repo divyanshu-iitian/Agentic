@@ -1,14 +1,13 @@
 # Agent Configuration
 
 # LLM Settings
-# Providers: "ollama" (local Ollama) or "personaplex" (NVIDIA PersonaPlex via HuggingFace)
 llm:
-  provider: "ollama"  # Using Ollama - auto-detects GPU!
-  model: "qwen2.5-coder:7b"  # 7B model, will use RTX 2050
-  base_url: "http://127.0.0.1:11434"  # Ollama server
-  temperature: 0.7  # Good for conversations
-  max_tokens: 256  # Optimized for responses
-  timeout: 300  # 5 minutes
+  provider: "ollama"
+  model: "qwen2.5-coder:7b"  # Fast 7B model for real-time agent responses
+  base_url: "http://localhost:11434"
+  temperature: 0.2  # Slightly higher for creative tasks
+  max_tokens: 1024  # More tokens for complex reasoning
+  timeout: 120  # Increased timeout
 
 # Safety Settings
 safety:
@@ -30,7 +29,6 @@ ui:
 
 # Observation Settings
 observation:
-  vision_model: "llava-phi3"  # DeepSeek-VL not found on Ollama, switched to llava-phi3 (Microsoft Phi-3 Vision) which is excellent.
   screenshot_on_action: true
   ocr_enabled: true
   ocr_languages: ["en"]
