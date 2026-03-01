@@ -17,6 +17,7 @@ from execution.actions import parse_action
 from execution.desktop_executor import DesktopExecutor
 from execution.browser_executor import BrowserExecutor
 from execution.github_executor import get_github_executor
+from execution.vision_executor import get_vision_executor
 from planning.action_validator import ActionValidator
 from observation.screen_capture import ScreenCapture
 from safety.kill_switch import KillSwitch, ActionLimiter
@@ -50,6 +51,7 @@ class Agent:
         self.desktop_executor = DesktopExecutor()
         self.browser_executor = BrowserExecutor()
         self.github_executor = get_github_executor()  # 🐙 GitHub integration
+        self.vision_executor = get_vision_executor()  # 👁️ Vision integration
         
         # Legacy observation (keeping for compatibility)
         self.screen_capture = ScreenCapture()
@@ -291,8 +293,12 @@ class Agent:
         Returns:
             Execution result
         """
+        # Vision actions
+        if action.startswith("vision_"):
+            return self.vision_executor.execute(action, args)
+        
         # GitHub actions
-        if action.startswith("github_"):
+        elif action.startswith("github_"):
             return self.github_executor.execute(action, args)
         
         # Browser actions

@@ -55,6 +55,10 @@ github_contribute
 github_search_projects
 github_create_pr
 
+vision_analyze
+vision_answer
+vision_detect_person
+
 stop
 
 ----------------------------------
@@ -196,6 +200,28 @@ github_create_pr:
     "description": "<PR description>",
     "branch": "<source branch, default: main>"
   }
+}
+
+vision_analyze:
+{
+  "action": "vision_analyze",
+  "args": {
+    "query": "<optional: what to look for>"
+  }
+}
+
+vision_answer:
+{
+  "action": "vision_answer",
+  "args": {
+    "question": "<question about what's in the camera>"
+  }
+}
+
+vision_detect_person:
+{
+  "action": "vision_detect_person",
+  "args": {}
 }
 
 stop:
@@ -398,6 +424,33 @@ Step 2:
 {"action":"github_contribute","args":{"max_contributions":1}}
 
 Step 3:
+{"action":"stop","args":{}}
+
+---
+
+Task: "what do you see in the camera"
+Step 1:
+{"action":"vision_analyze","args":{}}
+
+Step 2:
+{"action":"stop","args":{}}
+
+---
+
+Task: "who is in front of the camera"
+Step 1:
+{"action":"vision_detect_person","args":{}}
+
+Step 2:
+{"action":"stop","args":{}}
+
+---
+
+Task: "what am i wearing"
+Step 1:
+{"action":"vision_answer","args":{"question":"What clothes is the person wearing?"}}
+
+Step 2:
 {"action":"stop","args":{}}
 """
 

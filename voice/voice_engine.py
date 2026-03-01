@@ -178,6 +178,17 @@ class VoiceEngine:
     def _speak_bark(self, text: str, emotion: Optional[str]) -> str:
         """Generate speech using Bark (expressive TTS)"""
         try:
+            import torch
+            
+            # Fix PyTorch 2.6 weights_only issue with Bark models
+            if "bark" not in self.models_loaded:
+                _original_torch_load = torch.load
+                def _patched_torch_load(*args, **kwargs):
+                    if 'weights_only' not in kwargs:
+                        kwargs['weights_only'] = False
+                    return _original_torch_load(*args, **kwargs)
+                torch.load = _patched_torch_load
+            
             from bark import SAMPLE_RATE, generate_audio, preload_models
             from scipy.io.wavfile import write as write_wav
             

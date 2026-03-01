@@ -11,6 +11,7 @@ from dotenv import load_dotenv
 from core.agent import Agent
 from core.config import get_config
 from ui.floating_input import UIController
+from ui.camera_ui import get_camera_ui
 from utils.logger import log
 
 # Load environment variables from .env file
@@ -95,6 +96,15 @@ class AgenticApp:
         
         # Start agent
         self.agent.start()
+        
+        # Camera UI - optional (can be enabled later)
+        # Disabled for now to avoid threading issues
+        # try:
+        #     camera_ui = get_camera_ui()
+        #     camera_ui.start()
+        #     log.info("✨ Camera UI started")
+        # except Exception as e:
+        #     log.warning(f"Failed to start camera UI: {e}")
         
         # Start UI
         self.ui = UIController(on_command=self.on_command)

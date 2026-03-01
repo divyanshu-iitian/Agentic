@@ -111,6 +111,35 @@ class GitHubCreatePRAction(BaseModel):
         assert "title" in self.args, "Missing 'title' in args"
 
 
+# ============= 👁️ VISION ACTIONS =============
+
+class VisionAnalyzeAction(BaseModel):
+    """Analyze what's visible in camera"""
+    action: Literal["vision_analyze"] = "vision_analyze"
+    args: Dict[str, str] = Field(default_factory=dict)
+    
+    def validate_args(self):
+        pass  # Query is optional
+
+
+class VisionAnswerAction(BaseModel):
+    """Answer a visual question about camera feed"""
+    action: Literal["vision_answer"] = "vision_answer"
+    args: Dict[str, str] = Field(...)
+    
+    def validate_args(self):
+        assert "question" in self.args, "Missing 'question' in args"
+
+
+class VisionDetectPersonAction(BaseModel):
+    """Detect if person is present in camera"""
+    action: Literal["vision_detect_person"] = "vision_detect_person"
+    args: Dict = Field(default_factory=dict)
+    
+    def validate_args(self):
+        pass  # No required args
+
+
 # ============= Browser Actions =============
 
 class BrowserOpenAction(BaseModel):
@@ -172,6 +201,7 @@ AgentAction = (
     OpenAppAction | ClickAction | TypeAction | ScrollAction | WaitAction |
     VSCodeOpenAction | VSCodeNewFileAction | VSCodeSaveFileAction |
     GitHubContributeAction | GitHubSearchProjectsAction | GitHubCreatePRAction |
+    VisionAnalyzeAction | VisionAnswerAction | VisionDetectPersonAction |
     BrowserOpenAction | BrowserSearchAction | BrowserClickAction | 
     BrowserScrollAction | BrowserExtractAction | StopAction
 )
@@ -191,6 +221,9 @@ ACTION_TYPES = {
     "github_contribute": GitHubContributeAction,
     "github_search_projects": GitHubSearchProjectsAction,
     "github_create_pr": GitHubCreatePRAction,
+    "vision_analyze": VisionAnalyzeAction,
+    "vision_answer": VisionAnswerAction,
+    "vision_detect_person": VisionDetectPersonAction,
     "browser_open": BrowserOpenAction,
     "browser_search": BrowserSearchAction,
     "browser_click": BrowserClickAction,
