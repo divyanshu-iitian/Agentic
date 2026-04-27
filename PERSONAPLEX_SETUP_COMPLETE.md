@@ -5,7 +5,7 @@
 ### 1. ✅ HuggingFace Token Added
 **File:** `.env`
 ```bash
-HF_TOKEN=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
+HF_TOKEN=your_hf_token_here
 ```
 
 ### 2. ✅ PersonaPlex Client Updated
