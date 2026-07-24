@@ -19,7 +19,10 @@ class OllamaClient:
         self.model = config.llm.model
         self.temperature = config.llm.temperature
         self.max_tokens = config.llm.max_tokens
+        self.context_window = config.llm.context_window
         self.timeout = config.llm.timeout
+        self.keep_alive = config.llm.keep_alive
+        self.session = requests.Session()
 
         log.info(f"Ollama client initialized: {self.model} @ {self.base_url}")
 
@@ -48,12 +51,14 @@ class OllamaClient:
             "options": {
                 "temperature": self.temperature,
                 "num_predict": self.max_tokens,
+                "num_ctx": self.context_window,
             },
+            "keep_alive": self.keep_alive,
         }
 
         try:
             log.debug(f"Sending request to Ollama: {self.model}")
-            response = requests.post(url, json=payload, timeout=self.timeout)
+            response = self.session.post(url, json=payload, timeout=self.timeout)
             response.raise_for_status()
 
             result = response.json()
@@ -84,7 +89,7 @@ class OllamaClient:
             True if server is reachable
         """
         try:
-            response = requests.get(f"{self.base_url}/api/tags", timeout=5)
+            response = self.session.get(f"{self.base_url}/api/tags", timeout=5)
             return response.status_code == 200
         except requests.RequestException:
             return False
@@ -97,10 +102,14 @@ class OllamaClient:
             List of model names
         """
         try:
-            response = requests.get(f"{self.base_url}/api/tags", timeout=5)
+            response = self.session.get(f"{self.base_url}/api/tags", timeout=5)
             response.raise_for_status()
             data = response.json()
             return [model["name"] for model in data.get("models", [])]
         except Exception as e:
             log.error(f"Failed to list models: {e}")
             return []
+
+    def close(self) -> None:
+        """Release pooled HTTP connections."""
+        self.session.close()

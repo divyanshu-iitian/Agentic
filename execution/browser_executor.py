@@ -6,6 +6,7 @@ Executes browser automation actions using Playwright.
 
 import asyncio
 from typing import Any
+from urllib.parse import urlencode
 
 from playwright.async_api import Browser, Error, Page, async_playwright
 
@@ -50,6 +51,9 @@ class BrowserExecutor:
             await self.browser.close()
         if self.playwright:
             await self.playwright.stop()
+        self.page = None
+        self.browser = None
+        self.playwright = None
         log.info("Browser closed")
 
     async def execute(self, action: str, args: dict[str, Any]) -> dict[str, Any]:
@@ -100,7 +104,7 @@ class BrowserExecutor:
     async def _search(self, args: dict[str, Any]) -> dict[str, Any]:
         """Search on Google"""
         query = args["query"]
-        search_url = f"https://www.google.com/search?q={query}"
+        search_url = f"https://www.google.com/search?{urlencode({'q': query})}"
 
         await self.page.goto(search_url, wait_until="domcontentloaded")
         await asyncio.sleep(self.wait_after_nav)

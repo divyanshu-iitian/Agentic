@@ -3,10 +3,10 @@
 ## Now
 
 - keep the 8 GB RAM path fast and documented
-- add tests for action validation and prompt parsing
 - stream local model responses to the chat UI
 - add explicit permission prompts for consequential actions
 - measure startup time, idle memory, and first-token latency
+- add reproducible state-based desktop task evaluations
 
 ## Next
 

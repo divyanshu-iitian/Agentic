@@ -3,7 +3,7 @@ $ErrorActionPreference = "Stop"
 $projectRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $virtualEnv = Join-Path $projectRoot ".venv"
 $python = Join-Path $virtualEnv "Scripts\python.exe"
-$frontend = Join-Path $projectRoot "antigravity-chat\frontend"
+$frontend = Join-Path $projectRoot "agentic-app\frontend"
 
 Write-Host "Setting up Agentic..." -ForegroundColor Cyan
 
@@ -21,11 +21,12 @@ if (-not (Test-Path -LiteralPath $virtualEnv)) {
 
 & $python -m pip install --upgrade pip
 & $python -m pip install -r (Join-Path $projectRoot "requirements.txt")
+& $python -m pip install -r (Join-Path $projectRoot "agentic-app\backend\requirements.txt")
 & $python -m playwright install chromium
 
 Push-Location $frontend
 try {
-    npm install
+    npm ci
 }
 finally {
     Pop-Location
@@ -42,5 +43,5 @@ else {
 Write-Host ""
 Write-Host "Setup complete." -ForegroundColor Green
 Write-Host "Desktop agent: .\.venv\Scripts\python.exe main.py"
-Write-Host "Chat backend:  cd antigravity-chat\backend; ..\..\.venv\Scripts\python.exe main.py"
-Write-Host "Chat frontend: cd antigravity-chat\frontend; npm run dev"
+Write-Host "Chat backend:  cd agentic-app\backend; ..\..\.venv\Scripts\python.exe main.py"
+Write-Host "Chat frontend: cd agentic-app\frontend; npm run dev"

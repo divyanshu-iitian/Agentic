@@ -7,15 +7,28 @@ llm:
   base_url: "http://localhost:11434"
   temperature: 0.2  # Slightly higher for creative tasks
   max_tokens: 768
+  context_window: 4096
   timeout: 120
+  max_parse_retries: 1
+  keep_alive: "5m"
 
 # Safety Settings
 safety:
   max_actions_per_task: 30
   emergency_kill_hotkey: "ctrl+alt+q"
-  enable_whitelist: false
-  allowed_apps: []
-  allowed_domains: []
+  enable_whitelist: true
+  allowed_apps:
+    - "notepad"
+    - "calculator"
+    - "chrome"
+    - "firefox"
+    - "brave"
+    - "explorer"
+  allowed_domains:
+    - "google.com"
+    - "github.com"
+    - "wikipedia.org"
+    - "stackoverflow.com"
   blocked_actions: []
 
 # UI Settings

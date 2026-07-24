@@ -5,6 +5,7 @@
 [![CI](https://github.com/divyanshu-iitian/Agentic/actions/workflows/ci.yml/badge.svg)](https://github.com/divyanshu-iitian/Agentic/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-20252b.svg)](LICENSE)
 [![Local-first](https://img.shields.io/badge/inference-local--first-62c9c4.svg)](#why-agentic)
+[![Release](https://img.shields.io/github/v/release/divyanshu-iitian/Agentic?include_prereleases)](https://github.com/divyanshu-iitian/Agentic/releases)
 
 Agentic combines a lightweight chat interface, local Ollama models, reusable
 instruction skills, and opt-in desktop automation. It is designed around the
@@ -20,8 +21,10 @@ machines people already own, including CPU-only laptops with 8 GB of RAM.
 - **Modest hardware first:** no WebGL, particle canvas, remote font, or
   continuous GPU effect in the Lite interface.
 - **Focused skills:** only task-relevant Markdown skills enter the prompt.
-- **Bounded automation:** structured actions, validation, an action limit, and
-  `Ctrl + Alt + Q` emergency stop.
+- **Bounded automation:** typed actions, strict arguments, allowlists, an action
+  limit, and `Ctrl + Alt + Q` emergency stop.
+- **Learns without training:** explicit user feedback persists locally, while
+  temporary failure reflections help the current task recover.
 - **Explicit privacy:** Privacy Mode masks the conversation before a screen
   share without attempting to bypass capture software.
 - **Clean extension path:** skills are readable instructions rather than opaque
@@ -74,14 +77,14 @@ ollama serve
 Terminal two:
 
 ```powershell
-cd antigravity-chat\backend
+cd agentic-app\backend
 ..\..\.venv\Scripts\python.exe main.py
 ```
 
 Terminal three:
 
 ```powershell
-cd antigravity-chat\frontend
+cd agentic-app\frontend
 npm run dev
 ```
 
@@ -107,7 +110,7 @@ OLLAMA_BASE_URL=http://127.0.0.1:11434
 VOICE_ENABLED=false
 ```
 
-Copy `antigravity-chat/backend/.env.example` to `.env` before changing these
+Copy `agentic-app/backend/.env.example` to `.env` before changing these
 values. Groq and Edge TTS are optional packages and are never required for the
 local path.
 
@@ -132,13 +135,22 @@ triggers:
 The registry selects at most two matching skills and caps their combined prompt
 size. Skills cannot bypass action validation. See [the skills guide](skills/README.md).
 
+## Research, applied
+
+The runtime combines a compact ReAct-style loop, Reflexion-style failure
+feedback, tiered memory inspired by MemGPT, Voyager-style reusable skills, and
+OSWorld-style verification. The safety boundary also treats OCR, pages, and
+tool output as untrusted data, following the risk demonstrated by AgentDojo.
+
+See [research foundations](docs/research-foundations.md) for primary papers,
+the exact implementation mapping, and limitations.
+
 ## Project map
 
 ```text
-antigravity-chat/  React chat UI and FastAPI runtime
+agentic-app/       React chat UI and FastAPI runtime
 core/              Agent loop, state, memory, planning, skills
 execution/         Desktop and browser action adapters
-interaction/       Keyboard and screen interaction policies
 llm/               Ollama client, prompt, and response parser
 perception/        Screen observation, OCR, UI state, change detection
 planning/          Action validation
@@ -157,7 +169,7 @@ Read [the architecture guide](docs/architecture.md) for the complete flow.
 .\.venv\Scripts\python.exe -m pytest
 .\.venv\Scripts\python.exe -m ruff check .
 
-cd antigravity-chat\frontend
+cd agentic-app\frontend
 npm ci
 npm run lint
 npm run build
@@ -180,12 +192,14 @@ For vulnerability reporting, see [SECURITY.md](SECURITY.md).
 
 Working today:
 
-- Ollama chat with optional Groq fallback
+- Ollama chat with optional Groq mode
 - responsive low-GPU interface
 - explicit Privacy Mode
 - task-selected Markdown skills
-- structured desktop and browser actions
+- bounded feedback memory and task-local failure reflection
+- strictly typed desktop and browser actions
 - OCR-based screen observation
+- clean Linux/Windows CI for Python and the web application
 
 Next priorities are streaming, explicit permission prompts, runtime unification,
 packaging, and repeatable low-end hardware benchmarks. See
@@ -196,6 +210,8 @@ packaging, and repeatable low-end hardware benchmarks. See
 Focused improvements are welcome, especially lower memory use, safer
 permissions, accessible UI, deterministic tests, and narrowly scoped skills.
 Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request.
+
+Release history is in [CHANGELOG.md](CHANGELOG.md).
 
 ## License
 

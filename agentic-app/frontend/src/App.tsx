@@ -98,7 +98,8 @@ function App() {
   }, [])
 
   useEffect(() => {
-    void checkHealth()
+    const timer = window.setTimeout(() => void checkHealth(), 0)
+    return () => window.clearTimeout(timer)
   }, [checkHealth])
 
   useEffect(() => {

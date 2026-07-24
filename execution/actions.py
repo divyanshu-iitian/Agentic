@@ -1,160 +1,139 @@
+"""Typed schemas for every action the model may request.
+
+The model never calls Python functions directly. Its JSON output must match one
+of these bounded schemas before an executor can see it.
 """
-Action Schemas
 
-Pydantic models for all agent actions.
-Ensures type safety and validation.
-"""
+from typing import Annotated, Literal
 
-from typing import Any, Literal
+from pydantic import BaseModel, ConfigDict, Field
 
-from pydantic import BaseModel, Field
+ShortText = Annotated[str, Field(min_length=1, max_length=1_000)]
 
-# ============= Desktop Actions =============
 
+class StrictModel(BaseModel):
+    model_config = ConfigDict(extra="forbid")
 
-class OpenAppAction(BaseModel):
-    """Open an application"""
 
-    action: Literal["open_app"] = "open_app"
-    args: dict[str, str] = Field(...)
+class OpenAppArgs(StrictModel):
+    name: Annotated[str, Field(min_length=1, max_length=80)]
 
-    def validate_args(self):
-        assert "name" in self.args, "Missing 'name' in args"
 
+class ClickArgs(StrictModel):
+    x: Annotated[int, Field(ge=0, le=20_000)]
+    y: Annotated[int, Field(ge=0, le=20_000)]
 
-class ClickAction(BaseModel):
-    """Click at coordinates"""
 
-    action: Literal["click"] = "click"
-    args: dict[str, int] = Field(...)
+class TypeArgs(StrictModel):
+    text: Annotated[str, Field(max_length=50_000)]
 
-    def validate_args(self):
-        assert "x" in self.args, "Missing 'x' in args"
-        assert "y" in self.args, "Missing 'y' in args"
 
+class ScrollArgs(StrictModel):
+    amount: Annotated[int, Field(ge=-10_000, le=10_000)]
 
-class TypeAction(BaseModel):
-    """Type text"""
 
-    action: Literal["type"] = "type"
-    args: dict[str, str] = Field(...)
+class WaitArgs(StrictModel):
+    seconds: Annotated[float, Field(ge=0, le=30)]
 
-    def validate_args(self):
-        assert "text" in self.args, "Missing 'text' in args"
 
+class SaveFileArgs(StrictModel):
+    filename: Annotated[str, Field(max_length=255)] = ""
 
-class ScrollAction(BaseModel):
-    """Scroll by amount"""
 
-    action: Literal["scroll"] = "scroll"
-    args: dict[str, int] = Field(...)
+class BrowserOpenArgs(StrictModel):
+    url: Annotated[str, Field(min_length=1, max_length=2_048)]
 
-    def validate_args(self):
-        assert "amount" in self.args, "Missing 'amount' in args"
 
+class BrowserSearchArgs(StrictModel):
+    query: ShortText
 
-class WaitAction(BaseModel):
-    """Wait for seconds"""
 
-    action: Literal["wait"] = "wait"
-    args: dict[str, float] = Field(...)
+class BrowserClickArgs(StrictModel):
+    selector: ShortText
 
-    def validate_args(self):
-        assert "seconds" in self.args, "Missing 'seconds' in args"
 
+class BrowserScrollArgs(StrictModel):
+    amount: Annotated[int, Field(ge=-10_000, le=10_000)]
 
-# ============= 🧠 SEMANTIC VS CODE ACTIONS =============
 
+class BrowserExtractArgs(StrictModel):
+    goal: ShortText
 
-class VSCodeOpenAction(BaseModel):
-    """Open VS Code (semantic action)"""
 
-    action: Literal["vscode_open"] = "vscode_open"
-    args: dict = Field(default_factory=dict)
+class StopArgs(StrictModel):
+    success: bool = True
+    reason: Annotated[str, Field(max_length=500)] = ""
 
 
-class VSCodeNewFileAction(BaseModel):
-    """Create new file in VS Code (semantic action)"""
+class OpenAppAction(StrictModel):
+    action: Literal["open_app"]
+    args: OpenAppArgs
 
-    action: Literal["vscode_new_file"] = "vscode_new_file"
-    args: dict = Field(default_factory=dict)
 
+class ClickAction(StrictModel):
+    action: Literal["click"]
+    args: ClickArgs
 
-class VSCodeSaveFileAction(BaseModel):
-    """Save current file in VS Code (semantic action)"""
 
-    action: Literal["vscode_save_file"] = "vscode_save_file"
-    args: dict[str, str] = Field(default_factory=dict)
+class TypeAction(StrictModel):
+    action: Literal["type"]
+    args: TypeArgs
 
-    def validate_args(self):
-        # filename is optional
-        pass
 
+class ScrollAction(StrictModel):
+    action: Literal["scroll"]
+    args: ScrollArgs
 
-# ============= Browser Actions =============
 
+class WaitAction(StrictModel):
+    action: Literal["wait"]
+    args: WaitArgs
 
-class BrowserOpenAction(BaseModel):
-    """Open URL in browser"""
 
-    action: Literal["browser_open"] = "browser_open"
-    args: dict[str, str] = Field(...)
+class VSCodeOpenAction(StrictModel):
+    action: Literal["vscode_open"]
+    args: StrictModel = Field(default_factory=StrictModel)
 
-    def validate_args(self):
-        assert "url" in self.args, "Missing 'url' in args"
 
+class VSCodeNewFileAction(StrictModel):
+    action: Literal["vscode_new_file"]
+    args: StrictModel = Field(default_factory=StrictModel)
 
-class BrowserSearchAction(BaseModel):
-    """Search in browser"""
 
-    action: Literal["browser_search"] = "browser_search"
-    args: dict[str, str] = Field(...)
+class VSCodeSaveFileAction(StrictModel):
+    action: Literal["vscode_save_file"]
+    args: SaveFileArgs = Field(default_factory=SaveFileArgs)
 
-    def validate_args(self):
-        assert "query" in self.args, "Missing 'query' in args"
 
+class BrowserOpenAction(StrictModel):
+    action: Literal["browser_open"]
+    args: BrowserOpenArgs
 
-class BrowserClickAction(BaseModel):
-    """Click element in browser"""
 
-    action: Literal["browser_click"] = "browser_click"
-    args: dict[str, str] = Field(...)
+class BrowserSearchAction(StrictModel):
+    action: Literal["browser_search"]
+    args: BrowserSearchArgs
 
-    def validate_args(self):
-        assert "selector" in self.args, "Missing 'selector' in args"
 
+class BrowserClickAction(StrictModel):
+    action: Literal["browser_click"]
+    args: BrowserClickArgs
 
-class BrowserScrollAction(BaseModel):
-    """Scroll in browser"""
 
-    action: Literal["browser_scroll"] = "browser_scroll"
-    args: dict[str, int] = Field(...)
+class BrowserScrollAction(StrictModel):
+    action: Literal["browser_scroll"]
+    args: BrowserScrollArgs
 
-    def validate_args(self):
-        assert "amount" in self.args, "Missing 'amount' in args"
 
+class BrowserExtractAction(StrictModel):
+    action: Literal["browser_extract"]
+    args: BrowserExtractArgs
 
-class BrowserExtractAction(BaseModel):
-    """Extract information from browser"""
 
-    action: Literal["browser_extract"] = "browser_extract"
-    args: dict[str, str] = Field(...)
+class StopAction(StrictModel):
+    action: Literal["stop"]
+    args: StopArgs = Field(default_factory=StopArgs)
 
-    def validate_args(self):
-        assert "goal" in self.args, "Missing 'goal' in args"
-
-
-# ============= Control Actions =============
-
-
-class StopAction(BaseModel):
-    """Stop execution"""
-
-    action: Literal["stop"] = "stop"
-    args: dict = Field(default_factory=dict)
-
-
-# ============= Union Type =============
 
 AgentAction = (
     OpenAppAction
@@ -173,10 +152,7 @@ AgentAction = (
     | StopAction
 )
 
-
-# ============= Action Registry =============
-
-ACTION_TYPES = {
+ACTION_TYPES: dict[str, type[AgentAction]] = {
     "open_app": OpenAppAction,
     "click": ClickAction,
     "type": TypeAction,
@@ -194,26 +170,10 @@ ACTION_TYPES = {
 }
 
 
-def parse_action(action_dict: dict[str, Any]) -> AgentAction:
-    """
-    Parse and validate action dictionary.
-
-    Args:
-        action_dict: Raw action from LLM
-
-    Returns:
-        Validated action object
-
-    Raises:
-        ValueError: If action is invalid
-    """
+def parse_action(action_dict: dict) -> AgentAction:
+    """Parse untrusted model output into one supported, bounded action."""
     action_name = action_dict.get("action")
-
-    if action_name not in ACTION_TYPES:
+    action_class = ACTION_TYPES.get(action_name)
+    if action_class is None:
         raise ValueError(f"Unknown action: {action_name}")
-
-    action_class = ACTION_TYPES[action_name]
-    action_obj = action_class(**action_dict)
-    action_obj.validate_args()
-
-    return action_obj
+    return action_class.model_validate(action_dict)

@@ -8,6 +8,7 @@ useful on low-resource machines.
 from __future__ import annotations
 
 import logging
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -27,9 +28,19 @@ class Skill:
     instructions: str
     path: Path
 
+    def relevance(self, task: str) -> tuple[int, int]:
+        """Score exact trigger phrases; prefer the most specific match."""
+        normalized_task = " ".join(re.findall(r"[\w+-]+", task.casefold()))
+        padded_task = f" {normalized_task} "
+        matches = []
+        for trigger in self.triggers:
+            normalized_trigger = " ".join(re.findall(r"[\w+-]+", trigger.casefold()))
+            if normalized_trigger and f" {normalized_trigger} " in padded_task:
+                matches.append(len(normalized_trigger.split()))
+        return (max(matches, default=0), sum(matches))
+
     def matches(self, task: str) -> bool:
-        normalized_task = task.casefold()
-        return any(trigger.casefold() in normalized_task for trigger in self.triggers)
+        return self.relevance(task)[0] > 0
 
 
 class SkillRegistry:
@@ -89,8 +100,14 @@ class SkillRegistry:
         )
 
     def select(self, task: str, limit: int = 2) -> tuple[Skill, ...]:
-        """Return a small deterministic set of skills relevant to a task."""
-        return tuple(skill for skill in self.skills if skill.matches(task))[:limit]
+        """Return the most specific relevant skills within a small context cap."""
+        ranked = [
+            (skill.relevance(task), skill.name, skill)
+            for skill in self.skills
+            if skill.matches(task)
+        ]
+        ranked.sort(key=lambda item: (item[0], item[1]), reverse=True)
+        return tuple(item[2] for item in ranked[:limit])
 
     def prompt_for(self, task: str) -> str:
         selected = self.select(task)

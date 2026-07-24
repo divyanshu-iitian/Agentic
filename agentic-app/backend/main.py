@@ -7,6 +7,7 @@ runtime stays private, small, and usable on modest hardware.
 from __future__ import annotations
 
 import asyncio
+import logging
 import os
 import uuid
 from pathlib import Path
@@ -29,11 +30,23 @@ GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
 VOICE_ENABLED = os.getenv("VOICE_ENABLED", "false").lower() == "true"
 MAX_HISTORY_MESSAGES = 12
 MAX_MESSAGE_CHARS = 12_000
+MAX_CONCURRENT_GENERATIONS = max(1, int(os.getenv("MAX_CONCURRENT_GENERATIONS", "1")))
+SUPPORTED_PROVIDERS = {"ollama", "groq"}
+
+if CHAT_PROVIDER not in SUPPORTED_PROVIDERS:
+    raise RuntimeError(
+        f"Unsupported CHAT_PROVIDER={CHAT_PROVIDER!r}. Choose one of: "
+        f"{', '.join(sorted(SUPPORTED_PROVIDERS))}."
+    )
+
+log = logging.getLogger("agentic.api")
+generation_slots = asyncio.Semaphore(MAX_CONCURRENT_GENERATIONS)
+ollama_session = requests.Session()
 
 AUDIO_DIR = Path(__file__).resolve().parent / "audio_responses"
 AUDIO_DIR.mkdir(exist_ok=True)
 
-app = FastAPI(title=APP_NAME, version="0.2.0")
+app = FastAPI(title=APP_NAME, version="0.1.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -58,7 +71,10 @@ class HistoryMessage(BaseModel):
 
 class ChatRequest(BaseModel):
     message: str = Field(min_length=1, max_length=MAX_MESSAGE_CHARS)
-    history: list[HistoryMessage] = Field(default_factory=list)
+    history: list[HistoryMessage] = Field(
+        default_factory=list,
+        max_length=MAX_HISTORY_MESSAGES,
+    )
     voice: bool = False
 
 
@@ -71,7 +87,7 @@ SYSTEM_PROMPT = (
 
 def _ollama_health() -> bool:
     try:
-        response = requests.get(f"{OLLAMA_URL}/api/tags", timeout=2)
+        response = ollama_session.get(f"{OLLAMA_URL}/api/tags", timeout=2)
         return response.ok
     except requests.RequestException:
         return False
@@ -83,7 +99,7 @@ def _chat_with_ollama(request: ChatRequest) -> str:
         *[message.model_dump() for message in request.history[-MAX_HISTORY_MESSAGES:]],
         {"role": "user", "content": request.message},
     ]
-    response = requests.post(
+    response = ollama_session.post(
         f"{OLLAMA_URL}/api/chat",
         json={
             "model": OLLAMA_MODEL,
@@ -126,7 +142,10 @@ def _chat_with_groq(request: ChatRequest) -> str:
         temperature=0.2,
         max_tokens=768,
     )
-    return (completion.choices[0].message.content or "").strip()
+    content = (completion.choices[0].message.content or "").strip()
+    if not content:
+        raise RuntimeError("The cloud model returned an empty response.")
+    return content
 
 
 async def _generate_voice(text: str, filename: str) -> None:
@@ -160,19 +179,21 @@ async def health() -> dict[str, str | bool]:
 
 @app.post("/chat")
 async def chat(request: ChatRequest) -> dict[str, str | None]:
+    request_id = uuid.uuid4().hex[:12]
     try:
-        if CHAT_PROVIDER == "groq":
-            response_text = await asyncio.to_thread(_chat_with_groq, request)
-            model = GROQ_MODEL
-        else:
-            response_text = await asyncio.to_thread(_chat_with_ollama, request)
-            model = OLLAMA_MODEL
+        async with generation_slots:
+            if CHAT_PROVIDER == "groq":
+                response_text = await asyncio.to_thread(_chat_with_groq, request)
+                model = GROQ_MODEL
+            else:
+                response_text = await asyncio.to_thread(_chat_with_ollama, request)
+                model = OLLAMA_MODEL
 
-        audio_url = None
-        if VOICE_ENABLED and request.voice:
-            audio_filename = f"{uuid.uuid4()}.mp3"
-            await _generate_voice(response_text, audio_filename)
-            audio_url = f"/audio/{audio_filename}"
+            audio_url = None
+            if VOICE_ENABLED and request.voice:
+                audio_filename = f"{uuid.uuid4()}.mp3"
+                await _generate_voice(response_text, audio_filename)
+                audio_url = f"/audio/{audio_filename}"
 
         return {
             "response": response_text,
@@ -194,7 +215,11 @@ async def chat(request: ChatRequest) -> dict[str, str | None]:
             detail="The model timed out. Try a smaller model or a shorter prompt.",
         ) from exc
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+        log.exception("Chat request %s failed", request_id)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Generation failed. Check the local runtime logs. Reference: {request_id}",
+        ) from exc
 
 
 if __name__ == "__main__":

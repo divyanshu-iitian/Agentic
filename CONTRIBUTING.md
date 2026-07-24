@@ -19,9 +19,9 @@ Thanks for helping make local AI practical on ordinary computers.
 
 ```powershell
 python -m pytest test_skills.py
-python -m compileall core antigravity-chat\backend
+python -m compileall core agentic-app\backend
 
-cd antigravity-chat\frontend
+cd agentic-app\frontend
 npm run lint
 npm run build
 ```

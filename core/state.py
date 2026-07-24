@@ -33,12 +33,12 @@ class TaskState:
         self.last_observation: str = ""
         self.last_result: dict[str, Any] | None = None
 
-        # 🧠 INTELLIGENCE: State tracking
-        self.open_apps: set = set()  # Track which apps are already open
-        self.active_app: str | None = None  # Which app is currently focused
-        self.last_action: str | None = None  # Last action name
-        self.repeat_count: int = 0  # How many times same action repeated
-        self.last_screen_hash: str | None = None  # Screen state tracking
+        self.open_apps: set[str] = set()
+        self.active_app: str | None = None
+        self.last_action: str | None = None
+        self.repeat_count = 0
+        self.failure_streak = 0
+        self.reflections: list[str] = []
 
         log.info("Task state manager initialized")
 
@@ -51,12 +51,12 @@ class TaskState:
         self.last_observation = ""
         self.last_result = None
 
-        # Reset intelligence state
         self.open_apps = set()
         self.active_app = None
         self.last_action = None
         self.repeat_count = 0
-        self.last_screen_hash = None
+        self.failure_streak = 0
+        self.reflections = []
 
         log.info(f"Task started: {task}")
         self._save_state()
@@ -74,6 +74,7 @@ class TaskState:
 
         self.action_history.append(entry)
         self.last_result = result
+        self.failure_streak = 0 if result.get("success") else self.failure_streak + 1
 
         # Trim history if needed
         if len(self.action_history) > self.max_history:
@@ -94,24 +95,17 @@ class TaskState:
         self._save_state()
 
     def track_action(self, action_name: str, action_args: dict[str, Any] = None) -> bool:
-        """
-        🧠 INTELLIGENCE: Track action and detect repeats
-        Returns False if action should be SKIPPED
-        """
-        # Create a signature for comparison
+        """Return false when an identical action is stuck in a loop."""
         current_signature = (
             f"{action_name}:{json.dumps(action_args, sort_keys=True) if action_args else ''}"
         )
 
-        # Check if exactly same action repeating
         if current_signature == self.last_action:
             self.repeat_count += 1
         else:
             self.repeat_count = 0
             self.last_action = current_signature
 
-        # 🔥 STOP PAGALPAN: Max 3 EXACT SAME actions
-        # Some actions like wait/scroll are OK to repeat
         if self.repeat_count >= 3 and action_name not in ["wait", "scroll"]:
             log.warning(
                 "Repeated action blocked: "
@@ -121,32 +115,32 @@ class TaskState:
 
         return True
 
+    def add_reflection(self, reflection: str) -> None:
+        """Keep a small episodic buffer of actionable failure feedback."""
+        clean = " ".join(reflection.split())[:500]
+        if clean and (not self.reflections or self.reflections[-1] != clean):
+            self.reflections.append(clean)
+            self.reflections = self.reflections[-3:]
+
+    def recent_trajectory(self, limit: int = 5) -> str:
+        """Summarize recent actions without replaying full observations."""
+        lines = []
+        for entry in self.action_history[-limit:]:
+            action = entry.get("action", {})
+            result = entry.get("result", {})
+            outcome = "ok" if result.get("success") else f"failed: {result.get('error', 'unknown')}"
+            lines.append(f"- {action.get('action', 'unknown')} {action.get('args', {})}: {outcome}")
+        return "\n".join(lines)
+
     def mark_app_opened(self, app_name: str):
         """Track that an app is now open"""
         self.open_apps.add(app_name)
         self.active_app = app_name
-        log.info(f"📱 App tracked as open: {app_name}")
+        log.info(f"App tracked as open: {app_name}")
 
     def is_app_open(self, app_name: str) -> bool:
         """Check if app is already open"""
         return app_name in self.open_apps
-
-    def set_screen_hash(self, screen_hash: str, skip_check: bool = False) -> bool:
-        """
-        🧠 INTELLIGENCE: Check if screen changed
-        Returns False if screen is SAME (action failed)
-        """
-        # Skip check for slow actions (apps take time to open)
-        if skip_check:
-            self.last_screen_hash = screen_hash
-            return True
-
-        if self.last_screen_hash == screen_hash:
-            log.warning("⚠️ Screen unchanged after action - likely FAILED")
-            return False
-
-        self.last_screen_hash = screen_hash
-        return True
 
     def is_running(self) -> bool:
         """Check if task is currently running"""

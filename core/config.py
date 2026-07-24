@@ -14,11 +14,14 @@ class LLMConfig(BaseModel):
     """LLM configuration"""
 
     provider: str = "ollama"
-    model: str = "qwen2.5:7b"
+    model: str = "qwen2.5:3b"
     base_url: str = "http://localhost:11434"
     temperature: float = 0.1
     max_tokens: int = 512
+    context_window: int = Field(default=4096, ge=2048, le=32768)
     timeout: int = 30
+    max_parse_retries: int = Field(default=1, ge=0, le=2)
+    keep_alive: str = "5m"
 
 
 class SafetyConfig(BaseModel):

@@ -111,8 +111,5 @@ class JSONParser:
         if not JSONParser.validate_action_json(json_data):
             return None
 
-        if "thought" in json_data:
-            log.info(f"🤔 THOUGHT: {json_data['thought']}")
-
         log.info(f"Parsed action: {json_data['action']}")
         return json_data

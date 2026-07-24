@@ -31,5 +31,10 @@ configuration change, and automation adapter as trusted code.
 - Do not expose the local API to the public internet.
 - Keep external publishing and destructive actions behind explicit permission.
 
+Screen text, browser pages, OCR, and extracted content are untrusted inputs.
+Agentic labels them accordingly and validates every resulting action, but prompt
+injection defenses are not perfect. Keep allowlists enabled and do not use the
+pre-1.0 desktop agent for financial, administrative, or other high-impact tasks.
+
 Privacy Mode masks the Agentic interface during a screen share. It does not
 bypass recording software or operating-system monitoring.

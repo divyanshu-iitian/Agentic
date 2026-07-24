@@ -1,8 +1,4 @@
-"""
-Agentic — Local AI Desktop & Browser Automation Agent
-
-Main entry point.
-"""
+"""Agentic desktop runtime entry point."""
 
 import asyncio
 import sys
@@ -24,28 +20,25 @@ class AgenticApp:
 
     def __init__(self):
         self.agent = Agent()
-        self.ui: UIController = None
+        self.ui: UIController | None = None
 
         config = get_config()
         self.activation_hotkey = config.ui.activation_hotkey
 
     def on_command(self, command: str):
         """Handle command from UI"""
-        print(f"DEBUG: Main Received -> {command}")
-        log.info(f"📨 Received command: {command}")
+        log.info("Received command from desktop UI")
 
         # Handle Feedback
         if command.startswith("FEEDBACK:"):
             feedback = command.replace("FEEDBACK:", "").strip()
-            print(f"DEBUG: Processing Feedback -> {feedback}")
             self.agent.learn_from_feedback(feedback)
             return
 
         # Handle Stop
         if command == "STOP_IMMEDIATELY":
-            log.warning("🛑 STOP command received from UI")
+            log.warning("Stop command received from UI")
             self.agent.emergency_stop()
-            # We don't need to join the thread, it should exit gracefully
             return
 
         # Execute task in background thread
@@ -58,14 +51,16 @@ class AgenticApp:
 
     async def _execute_command(self, command: str):
         """Execute command in async context"""
-        self.ui.set_status("Running...", "#ffff00")
+        if self.ui is None:
+            return
+        self.ui.set_status("Running")
 
         success = await self.agent.execute_task(command)
 
         if success:
-            self.ui.set_status("✅ Completed", "#00ff00")
+            self.ui.set_status("Completed")
         else:
-            self.ui.set_status("❌ Failed", "#ff0000")
+            self.ui.set_status("Failed")
 
     def setup_hotkeys(self):
         """Setup global hotkeys"""
@@ -76,19 +71,19 @@ class AgenticApp:
     def run(self):
         """Run the application"""
         log.info("=" * 60)
-        log.info("🚀 AGENTIC — Local AI Agent Starting")
+        log.info("Agentic local runtime starting")
         log.info("=" * 60)
 
         # Check Ollama connection
         if not self.agent.llm.check_health():
-            log.error("❌ Ollama server not reachable!")
+            log.error("Ollama server not reachable")
             log.error("Please start Ollama first:")
             log.error("  1. Install from https://ollama.ai")
             log.error("  2. Run: ollama serve")
             log.error(f"  3. Pull a model: ollama pull {self.agent.llm.model}")
             sys.exit(1)
 
-        log.info("✅ Ollama connection OK")
+        log.info("Ollama connection OK")
 
         # List available models
         models = self.agent.llm.list_models()
@@ -106,7 +101,7 @@ class AgenticApp:
         self.setup_hotkeys()
 
         log.info("=" * 60)
-        log.info("✨ Agent is READY")
+        log.info("Agent is ready")
         log.info(f"Press {self.activation_hotkey} to activate")
         log.info("Press Ctrl+Alt+Q to emergency stop")
         log.info("=" * 60)
@@ -123,8 +118,9 @@ class AgenticApp:
         """Cleanup resources"""
         log.info("Cleaning up...")
         self.agent.stop()
-        asyncio.run(self.agent.browser_executor.cleanup())
-        log.info("Goodbye! 👋")
+        if self.agent.browser_executor.browser is not None:
+            asyncio.run(self.agent.browser_executor.cleanup())
+        log.info("Shutdown complete")
 
 
 def main():

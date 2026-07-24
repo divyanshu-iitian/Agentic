@@ -35,9 +35,31 @@ Observe -> Reason -> Validate -> Execute -> Verify
   +-- screen capture, OCR, and symbolic UI state
 ```
 
-The desktop agent uses structured JSON actions. The language model cannot call
-arbitrary Python functions directly. The action validator and action limiter
-run before execution, and `Ctrl + Alt + Q` provides an emergency stop.
+The desktop agent uses strictly typed JSON actions. The language model cannot
+call arbitrary Python functions directly. Unknown tools, extra arguments,
+unsafe URL protocols, values outside action bounds, and disallowed targets are
+rejected before execution. `Ctrl + Alt + Q` provides an emergency stop.
+
+## Context and memory
+
+```text
+current observation       short-lived, compact symbolic state
+recent trajectory         last five action outcomes
+failure reflections       last three task-local recovery notes
+explicit user feedback    bounded local JSON, selected by relevance
+skills                    at most two task-relevant Markdown files
+```
+
+This tiering keeps prompts useful for small context windows. Raw screenshots,
+hidden reasoning, and model-generated reflections are not written to long-term
+memory. Only explicit user feedback persists.
+
+## Trust boundary
+
+The user task is authoritative. OCR, DOM summaries, webpage text, and extracted
+content are untrusted environment data. Prompt guidance reinforces that
+boundary, while typed schemas, allowlists, action budgets, and narrow executors
+enforce it in code.
 
 ## Skills
 
@@ -61,7 +83,10 @@ action validator.
 - `planning/`: action validation
 - `safety/`: kill switch and action limits
 - `ui/`: classic desktop command surface
-- `antigravity-chat/`: lightweight React and FastAPI chat
+- `agentic-app/`: lightweight React and FastAPI chat
 
 The two surfaces are intentionally separate until a permission-aware unified
 runtime is ready.
+
+The research-to-implementation rationale is documented in
+[research foundations](research-foundations.md).
