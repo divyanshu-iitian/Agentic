@@ -1,375 +1,202 @@
-# Agentic — Local AI Desktop & Browser Automation Agent
+# Agentic
 
-**A research-grade, fully offline autonomous AI agent for desktop and browser control**
+### A local-first AI companion for everyday computers
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![CI](https://github.com/divyanshu-iitian/Agentic/actions/workflows/ci.yml/badge.svg)](https://github.com/divyanshu-iitian/Agentic/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-20252b.svg)](LICENSE)
+[![Local-first](https://img.shields.io/badge/inference-local--first-62c9c4.svg)](#why-agentic)
 
----
+Agentic combines a lightweight chat interface, local Ollama models, reusable
+instruction skills, and opt-in desktop automation. It is designed around the
+machines people already own, including CPU-only laptops with 8 GB of RAM.
 
-## 🎯 Project Vision
+> Agentic is pre-1.0 software. Use desktop automation on non-critical tasks and
+> keep the emergency stop shortcut available.
 
-Agentic is a production-grade autonomous AI agent that:
-- Runs **100% offline** using local open-source LLMs
-- Controls desktop applications and web browsers via natural language
-- Operates through a persistent, always-on-top interface
-- Plans multi-step tasks and self-corrects through observation
-- Maintains strict safety boundaries and emergency controls
+## Why Agentic
 
-**Built for**: Research engineers, technical interviews, and real-world automation
+- **Local by default:** Ollama is the default provider. Cloud inference is
+  optional.
+- **Modest hardware first:** no WebGL, particle canvas, remote font, or
+  continuous GPU effect in the Lite interface.
+- **Focused skills:** only task-relevant Markdown skills enter the prompt.
+- **Bounded automation:** structured actions, validation, an action limit, and
+  `Ctrl + Alt + Q` emergency stop.
+- **Explicit privacy:** Privacy Mode masks the conversation before a screen
+  share without attempting to bypass capture software.
+- **Clean extension path:** skills are readable instructions rather than opaque
+  executable plugins.
 
----
+## Interface
 
-## 🏗️ System Architecture
+![Agentic desktop interface](docs/assets/agentic-interface.png)
 
-### Layered Agent Architecture
+The responsive chat surface includes offline feedback, voice controls, keyboard
+navigation, reduced-motion support, runtime settings, and `Ctrl + Shift + P`
+Privacy Mode.
 
-```
-┌─────────────────────────────────────────────────────────┐
-│                    INPUT LAYER                          │
-│  • Persistent floating UI (Tkinter)                     │
-│  • Hotkey activation (Ctrl+Space)                       │
-│  • Non-blocking command queue                           │
-└─────────────────────────────────────────────────────────┘
-                          ↓
-┌─────────────────────────────────────────────────────────┐
-│                   REASONING LAYER                       │
-│  • Local LLM (Ollama: Qwen/LLaMA/Mistral)              │
-│  • Strict system prompt                                 │
-│  • JSON-only output enforcement                         │
-└─────────────────────────────────────────────────────────┘
-                          ↓
-┌─────────────────────────────────────────────────────────┐
-│                   PLANNING LAYER                        │
-│  • Intent → Action translation                          │
-│  • Multi-step task decomposition                        │
-│  • Retry logic & failure handling                       │
-└─────────────────────────────────────────────────────────┘
-                          ↓
-┌─────────────────────────────────────────────────────────┐
-│                  EXECUTION LAYER                        │
-│  • Desktop Executor (pyautogui, keyboard)              │
-│  • Browser Executor (Playwright)                        │
-│  • Action validation & logging                          │
-└─────────────────────────────────────────────────────────┘
-                          ↓
-┌─────────────────────────────────────────────────────────┐
-│                 OBSERVATION LAYER                       │
-│  • Screenshot capture (Pillow)                          │
-│  • OCR processing (EasyOCR)                            │
-│  • DOM summarization (Playwright)                       │
-│  • State change detection                               │
-└─────────────────────────────────────────────────────────┘
-                          ↓
-┌─────────────────────────────────────────────────────────┐
-│                    SAFETY LAYER                         │
-│  • Emergency kill switch (Ctrl+Alt+Q)                  │
-│  • Action limit enforcement                             │
-│  • App/domain whitelist                                 │
-│  • Destructive action prevention                        │
-└─────────────────────────────────────────────────────────┘
+## Hardware guide
+
+| Machine | Suggested model | Good for |
+| --- | --- | --- |
+| 8 GB RAM, CPU only | `qwen2.5:3b` | Chat, planning, short coding tasks |
+| 16 GB RAM | `qwen2.5-coder:7b` | Coding and multi-step reasoning |
+| 24 GB+ or capable GPU | a quantized 14B model | Deeper reasoning |
+
+Start with the 3B model. Increase model size only when latency and available
+memory remain comfortable.
+
+## Quick start
+
+Requirements:
+
+- Windows 10 or 11 for the current desktop automation surface
+- Python 3.10+
+- Node.js 20+
+- [Ollama](https://ollama.com/)
+- [Tesseract OCR](https://github.com/tesseract-ocr/tesseract), optional but
+  recommended for screen understanding
+
+```powershell
+git clone https://github.com/divyanshu-iitian/Agentic.git
+cd Agentic
+.\setup.ps1
 ```
 
----
+### Start lightweight chat
 
-## 📁 Project Structure
+Terminal one:
 
-```
-Agentic/
-├── README.md                    # This file
-├── requirements.txt             # Python dependencies
-├── config.yaml                  # Agent configuration
-├── .gitignore
-│
-├── main.py                      # Entry point
-│
-├── core/
-│   ├── __init__.py
-│   ├── agent.py                 # Main agent orchestration loop
-│   ├── config.py                # Configuration management
-│   └── state.py                 # Task state tracking
-│
-├── llm/
-│   ├── __init__.py
-│   ├── ollama_client.py         # Ollama integration
-│   ├── prompt.py                # System prompt template
-│   └── parser.py                # JSON output parser
-│
-├── planning/
-│   ├── __init__.py
-│   ├── task_planner.py          # Task decomposition
-│   └── action_validator.py     # Action safety checks
-│
-├── execution/
-│   ├── __init__.py
-│   ├── desktop_executor.py     # Desktop automation
-│   ├── browser_executor.py     # Browser automation
-│   └── actions.py               # Action schemas
-│
-├── observation/
-│   ├── __init__.py
-│   ├── screen_capture.py       # Screenshot & OCR
-│   ├── dom_parser.py            # Browser DOM extraction
-│   └── state_detector.py       # Change detection
-│
-├── safety/
-│   ├── __init__.py
-│   ├── kill_switch.py           # Emergency controls
-│   ├── whitelist.py             # App/domain filters
-│   └── limiter.py               # Rate limiting
-│
-├── ui/
-│   ├── __init__.py
-│   └── floating_input.py       # Tkinter UI
-│
-└── utils/
-    ├── __init__.py
-    ├── logger.py                # Logging setup
-    └── helpers.py               # Utility functions
+```powershell
+ollama serve
 ```
 
----
+Terminal two:
 
-## 🛠️ Tech Stack (100% Free & Open-Source)
-
-| Component | Technology | Reason |
-|-----------|-----------|---------|
-| **LLM** | Ollama (Qwen-2.5, LLaMA-3, Mistral) | Local inference, GGUF support |
-| **Language** | Python 3.10+ | Async support, rich ecosystem |
-| **UI** | Tkinter | Built-in, lightweight, always-on-top |
-| **Desktop Control** | pyautogui, keyboard, mouse | Cross-platform automation |
-| **Browser Control** | Playwright | Modern, async, headless support |
-| **OCR** | EasyOCR | GPU-accelerated, offline |
-| **Image Processing** | Pillow | Standard library |
-| **Memory** | JSON files | Simple, debuggable, no DB overhead |
-
----
-
-## 🚀 Installation
-
-### Prerequisites
-
-1. **Python 3.10+**
-   ```bash
-   python --version
-   ```
-
-2. **Ollama** (for local LLM)
-   ```bash
-   # Install from https://ollama.ai
-   ollama pull qwen2.5:7b
-   # or
-   ollama pull llama3.2:3b
-   ```
-
-### Setup
-
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/divyanshu-iitian/Agentic.git
-   cd Agentic
-   ```
-
-2. **Create virtual environment**
-   ```bash
-   python -m venv venv
-   # Windows
-   .\venv\Scripts\activate
-   # Linux/Mac
-   source venv/bin/activate
-   ```
-
-3. **Install dependencies**
-   ```bash
-   pip install -r requirements.txt
-   playwright install chromium
-   ```
-
-4. **Configure the agent**
-   ```bash
-   # Edit config.yaml with your preferences
-   notepad config.yaml
-   ```
-
-5. **Run the agent**
-   ```bash
-   python main.py
-   ```
-
----
-
-## 📖 Usage
-
-### Basic Command Flow
-
-1. Press **Ctrl+Space** to activate the input box
-2. Type your natural language command:
-   - "search best laptop under 80k and summarize"
-   - "open notepad and type hello world"
-   - "go to github and extract trending repos"
-3. Press **Enter** — the agent executes autonomously
-4. Press **Ctrl+Alt+Q** for emergency stop
-
-### Example Tasks
-
-```
-User: "search Python async tutorial and save top 3 links"
-Agent: browser_open → browser_search → browser_scroll → browser_extract → stop
-
-User: "open calculator and calculate 15% of 50000"
-Agent: open_app → click → type → click → stop
+```powershell
+cd antigravity-chat\backend
+..\..\.venv\Scripts\python.exe main.py
 ```
 
----
+Terminal three:
 
-## 🔒 Safety Features
-
-| Feature | Implementation | Purpose |
-|---------|---------------|---------|
-| **Kill Switch** | Ctrl+Alt+Q hotkey | Instant termination |
-| **Action Limit** | 50 actions per task | Prevent infinite loops |
-| **Whitelist** | config.yaml | Control allowed apps/domains |
-| **No Destructive Ops** | Hardcoded blocks | No file deletion, no system changes |
-| **Observation-Based** | Before every action | Prevents blind execution |
-
----
-
-## 🧠 How It Works
-
-### The Agent Loop (Simplified)
-
-```python
-while not task_complete:
-    # 1. OBSERVE
-    observation = capture_screen() + extract_dom()
-    
-    # 2. REASON
-    action_json = llm.decide(system_prompt, observation, task)
-    
-    # 3. VALIDATE
-    if not safety_check(action_json):
-        stop()
-    
-    # 4. EXECUTE
-    result = executor.run(action_json)
-    
-    # 5. FEEDBACK
-    update_state(result)
+```powershell
+cd antigravity-chat\frontend
+npm run dev
 ```
 
-### Why JSON-Only Output?
+Open `http://127.0.0.1:5173`.
 
-- Prevents hallucination
-- Enables deterministic parsing
-- Forces structured reasoning
-- Eliminates chat-like responses
+### Start desktop automation
 
+```powershell
+.\.venv\Scripts\python.exe main.py
+```
+
+Press `Ctrl + Space` to show the command surface. Press `Ctrl + Alt + Q` to
+stop automation immediately.
+
+## Runtime configuration
+
+The default chat backend uses:
+
+```env
+CHAT_PROVIDER=ollama
+OLLAMA_MODEL=qwen2.5:3b
+OLLAMA_BASE_URL=http://127.0.0.1:11434
+VOICE_ENABLED=false
+```
+
+Copy `antigravity-chat/backend/.env.example` to `.env` before changing these
+values. Groq and Edge TTS are optional packages and are never required for the
+local path.
+
+## Skills
+
+A skill lives at `skills/<name>/SKILL.md`:
+
+```md
+---
+name: code-review
+description: Review code with focused verification.
+triggers:
+  - review code
+  - find bugs
 ---
 
-## 🎓 Design Decisions
+1. Inspect callers before changing behavior.
+2. Prioritize correctness over style.
+3. Run the narrowest relevant test.
+```
 
-### Why Ollama over llama.cpp?
+The registry selects at most two matching skills and caps their combined prompt
+size. Skills cannot bypass action validation. See [the skills guide](skills/README.md).
 
-- Simpler API
-- Built-in model management
-- Better memory handling for long contexts
+## Project map
 
-### Why Playwright over Selenium?
+```text
+antigravity-chat/  React chat UI and FastAPI runtime
+core/              Agent loop, state, memory, planning, skills
+execution/         Desktop and browser action adapters
+interaction/       Keyboard and screen interaction policies
+llm/               Ollama client, prompt, and response parser
+perception/        Screen observation, OCR, UI state, change detection
+planning/          Action validation
+safety/            Kill switch and action limiting
+skills/            Task-selected instruction skills
+tests/             Fast deterministic tests
+ui/                Classic desktop command surface
+```
 
-- Modern async/await syntax
-- Better headless support
-- Built-in network interception
-- Cleaner DOM access
+Read [the architecture guide](docs/architecture.md) for the complete flow.
 
-### Why Tkinter over PyQt?
+## Development
 
-- No external dependencies
-- Lightweight
-- Sufficient for simple UI
-- Cross-platform
+```powershell
+.\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
+.\.venv\Scripts\python.exe -m pytest
+.\.venv\Scripts\python.exe -m ruff check .
 
-### Why JSON Memory over Vector DB?
+cd antigravity-chat\frontend
+npm ci
+npm run lint
+npm run build
+```
 
-- No external dependencies
-- Easy to debug
-- Sufficient for short-term memory
-- Can upgrade later without breaking architecture
+CI runs Python tests and the complete frontend build for every pull request.
 
----
+## Safety and privacy
 
-## 🚧 Current Limitations
+Desktop automation can click, type, and browse on your behalf. Review
+`config.yaml`, use allowlists for sensitive environments, and never install
+unreviewed skills.
 
-1. **No long-term memory** — resets per session
-2. **Limited vision** — OCR only, no multimodal LLM yet
-3. **Windows-optimized** — Linux/Mac need testing
-4. **Single-task** — no parallel execution
-5. **No learning** — no fine-tuning or RLHF loop
+Privacy Mode only masks this application's interface. It does not alter
+third-party recording software or make automation invisible.
 
----
+For vulnerability reporting, see [SECURITY.md](SECURITY.md).
 
-## 🛣️ Roadmap
+## Status and roadmap
 
-### Phase 1 (Current) — Core Functionality
-- [x] Architecture design
-- [x] System prompt engineering
-- [ ] Desktop automation
-- [ ] Browser automation
-- [ ] Basic UI
-- [ ] Safety controls
+Working today:
 
-### Phase 2 — Intelligence
-- [ ] Multi-step task planning
-- [ ] Error recovery & retry logic
-- [ ] Context window management
-- [ ] Action history tracking
+- Ollama chat with optional Groq fallback
+- responsive low-GPU interface
+- explicit Privacy Mode
+- task-selected Markdown skills
+- structured desktop and browser actions
+- OCR-based screen observation
 
-### Phase 3 — Advanced Features
-- [ ] Multimodal LLM (LLaVA)
-- [ ] Voice input (Whisper)
-- [ ] Persistent memory (SQLite)
-- [ ] Multi-agent coordination
-- [ ] Tool use (calculator, file parser)
+Next priorities are streaming, explicit permission prompts, runtime unification,
+packaging, and repeatable low-end hardware benchmarks. See
+[the roadmap](docs/roadmap.md).
 
-### Phase 4 — Research Extensions
-- [ ] Reinforcement learning from human feedback
-- [ ] Self-improvement through reflection
-- [ ] Benchmark on standard agent tasks
-- [ ] Research paper submission
+## Contributing
 
----
+Focused improvements are welcome, especially lower memory use, safer
+permissions, accessible UI, deterministic tests, and narrowly scoped skills.
+Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request.
 
-## 🤝 Contributing
+## License
 
-This is a research project. Contributions welcome!
-
-**Focus areas:**
-- Cross-platform compatibility
-- Action robustness
-- Safety improvements
-- Better observation methods
-
----
-
-## 📜 License
-
-MIT License — see LICENSE file
-
----
-
-## 🙏 Acknowledgments
-
-- Ollama team for local LLM infrastructure
-- Playwright team for modern browser automation
-- Open-source LLM community (Meta, Mistral, Qwen)
-
----
-
-## 📧 Contact
-
-**Author**: Divyanshu  
-**GitHub**: [@divyanshu-iitian](https://github.com/divyanshu-iitian)  
-**Project**: [Agentic](https://github.com/divyanshu-iitian/Agentic)
-
----
-
-**Built with 🧠 for research, interviews, and real-world automation**
+MIT. See [LICENSE](LICENSE).

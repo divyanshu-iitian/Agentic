@@ -51,14 +51,6 @@ browser_click
 browser_scroll
 browser_extract
 
-github_contribute
-github_search_projects
-github_create_pr
-
-vision_analyze
-vision_answer
-vision_detect_person
-
 stop
 
 ----------------------------------
@@ -175,55 +167,6 @@ browser_extract:
   }
 }
 
-github_contribute:
-{
-  "action": "github_contribute",
-  "args": {
-    "project_name": "<optional: owner/repo>",
-    "focus_area": "<optional: bug, feature, docs, performance>",
-    "max_contributions": <optional: number, default 1>
-  }
-}
-
-github_search_projects:
-{
-  "action": "github_search_projects",
-  "args": {}
-}
-
-github_create_pr:
-{
-  "action": "github_create_pr",
-  "args": {
-    "repo": "<owner/repo>",
-    "title": "<PR title>",
-    "description": "<PR description>",
-    "branch": "<source branch, default: main>"
-  }
-}
-
-vision_analyze:
-{
-  "action": "vision_analyze",
-  "args": {
-    "query": "<optional: what to look for>"
-  }
-}
-
-vision_answer:
-{
-  "action": "vision_answer",
-  "args": {
-    "question": "<question about what's in the camera>"
-  }
-}
-
-vision_detect_person:
-{
-  "action": "vision_detect_person",
-  "args": {}
-}
-
 stop:
 {
   "action": "stop",
@@ -250,12 +193,9 @@ TASK EXECUTION RULES:
   - Use vscode_open instead of open_app + clicks
   - Use vscode_new_file instead of Ctrl+N clicks
   - Use vscode_save_file instead of clicking menus
-  - Use github_contribute for open source contributions
-  - Use github_search_projects to find GitHub projects
 - For opening apps: semantic actions are ALWAYS better
 - For typing code: use proper syntax and formatting
 - For creating files: use semantic actions, then type content
-- For GitHub tasks: use github_* actions directly (autonomous agent handles everything)
 - For complex tasks: plan ahead but execute one step at a time
 - Avoid unnecessary actions.
 - Do not repeat actions unless observation changes.
@@ -293,12 +233,12 @@ You are silent. You are precise. You are reliable.
 def build_user_prompt(task: str, observation: str, step_count: int) -> str:
     """
     Construct the user prompt for each agent step.
-    
+
     Args:
         task: The original user task
         observation: Current screen/DOM state
         step_count: Number of steps taken so far
-        
+
     Returns:
         Formatted prompt string
     """
@@ -400,58 +340,11 @@ Step 2:
 {"action":"wait","args":{"seconds":1}}
 
 Step 3:
-{"action":"type","args":{"text":"TODO:\\n1. Finish project\\n2. Review code\\n3. Deploy to production"}}
+{"action":"type","args":{"text":"TODO:\\n1. Build\\n2. Review\\n3. Ship"}}
 
 Step 4:
 {"action":"stop","args":{}}
 
----
-
-Task: "contribute to an open source python project"
-Step 1:
-{"action":"github_contribute","args":{}}
-
-Step 2:
-{"action":"stop","args":{}}
-
----
-
-Task: "find python projects on github and contribute"
-Step 1:
-{"action":"github_search_projects","args":{}}
-
-Step 2:
-{"action":"github_contribute","args":{"max_contributions":1}}
-
-Step 3:
-{"action":"stop","args":{}}
-
----
-
-Task: "what do you see in the camera"
-Step 1:
-{"action":"vision_analyze","args":{}}
-
-Step 2:
-{"action":"stop","args":{}}
-
----
-
-Task: "who is in front of the camera"
-Step 1:
-{"action":"vision_detect_person","args":{}}
-
-Step 2:
-{"action":"stop","args":{}}
-
----
-
-Task: "what am i wearing"
-Step 1:
-{"action":"vision_answer","args":{"question":"What clothes is the person wearing?"}}
-
-Step 2:
-{"action":"stop","args":{}}
 """
 
 

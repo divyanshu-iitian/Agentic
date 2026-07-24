@@ -1,8 +1,0 @@
-# Voice AI dependencies
-TTS>=0.22.0  # Coqui XTTS v2
-scipy>=1.11.0  # Audio processing
-numpy>=1.24.0  # Array operations
-
-# Optional voice models (install separately)
-# bark  # pip install git+https://github.com/suno-ai/bark.git
-# piper-tts  # pip install piper-tts

@@ -4,14 +4,15 @@ Configuration Management
 Loads and validates agent configuration from config.yaml
 """
 
-import yaml
 from pathlib import Path
-from typing import Dict, Any, List
+
+import yaml
 from pydantic import BaseModel, Field
 
 
 class LLMConfig(BaseModel):
     """LLM configuration"""
+
     provider: str = "ollama"
     model: str = "qwen2.5:7b"
     base_url: str = "http://localhost:11434"
@@ -22,16 +23,18 @@ class LLMConfig(BaseModel):
 
 class SafetyConfig(BaseModel):
     """Safety constraints"""
+
     max_actions_per_task: int = 50
     emergency_kill_hotkey: str = "ctrl+alt+q"
     enable_whitelist: bool = True
-    allowed_apps: List[str] = Field(default_factory=list)
-    allowed_domains: List[str] = Field(default_factory=list)
-    blocked_actions: List[str] = Field(default_factory=list)
+    allowed_apps: list[str] = Field(default_factory=list)
+    allowed_domains: list[str] = Field(default_factory=list)
+    blocked_actions: list[str] = Field(default_factory=list)
 
 
 class UIConfig(BaseModel):
     """UI settings"""
+
     activation_hotkey: str = "ctrl+space"
     always_on_top: bool = True
     window_width: int = 600
@@ -42,15 +45,17 @@ class UIConfig(BaseModel):
 
 class ObservationConfig(BaseModel):
     """Observation settings"""
+
     screenshot_on_action: bool = True
     ocr_enabled: bool = True
-    ocr_languages: List[str] = Field(default_factory=lambda: ["en"])
+    ocr_languages: list[str] = Field(default_factory=lambda: ["en"])
     dom_summarization: bool = True
     max_dom_elements: int = 100
 
 
 class DesktopExecutionConfig(BaseModel):
     """Desktop execution settings"""
+
     click_delay: float = 0.5
     type_delay: float = 0.1
     screenshot_before_click: bool = True
@@ -58,6 +63,7 @@ class DesktopExecutionConfig(BaseModel):
 
 class BrowserExecutionConfig(BaseModel):
     """Browser execution settings"""
+
     headless: bool = False
     viewport_width: int = 1920
     viewport_height: int = 1080
@@ -67,12 +73,14 @@ class BrowserExecutionConfig(BaseModel):
 
 class ExecutionConfig(BaseModel):
     """Execution settings"""
+
     desktop: DesktopExecutionConfig = Field(default_factory=DesktopExecutionConfig)
     browser: BrowserExecutionConfig = Field(default_factory=BrowserExecutionConfig)
 
 
 class LoggingConfig(BaseModel):
     """Logging settings"""
+
     level: str = "INFO"
     file: str = "logs/agent.log"
     max_size_mb: int = 50
@@ -82,6 +90,7 @@ class LoggingConfig(BaseModel):
 
 class MemoryConfig(BaseModel):
     """Memory settings"""
+
     state_file: str = "state/current_task.json"
     history_file: str = "state/action_history.json"
     max_history_items: int = 100
@@ -89,6 +98,7 @@ class MemoryConfig(BaseModel):
 
 class Config(BaseModel):
     """Main configuration"""
+
     llm: LLMConfig = Field(default_factory=LLMConfig)
     safety: SafetyConfig = Field(default_factory=SafetyConfig)
     ui: UIConfig = Field(default_factory=UIConfig)
@@ -101,22 +111,22 @@ class Config(BaseModel):
 def load_config(config_path: str = "config.yaml") -> Config:
     """
     Load configuration from YAML file.
-    
+
     Args:
         config_path: Path to config.yaml
-        
+
     Returns:
         Validated Config object
     """
     config_file = Path(config_path)
-    
+
     if not config_file.exists():
         print(f"⚠️ Config file not found at {config_path}, using defaults")
         return Config()
-    
-    with open(config_file, "r") as f:
+
+    with open(config_file) as f:
         config_dict = yaml.safe_load(f)
-    
+
     return Config(**config_dict)
 
 

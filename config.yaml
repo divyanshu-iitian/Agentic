@@ -3,48 +3,49 @@
 # LLM Settings
 llm:
   provider: "ollama"
-  model: "qwen2.5-coder:7b"  # Fast 7B model for real-time agent responses
+  model: "qwen2.5:3b"  # Good default for 8 GB RAM and CPU-only systems
   base_url: "http://localhost:11434"
   temperature: 0.2  # Slightly higher for creative tasks
-  max_tokens: 1024  # More tokens for complex reasoning
-  timeout: 120  # Increased timeout
+  max_tokens: 768
+  timeout: 120
 
 # Safety Settings
 safety:
-  max_actions_per_task: 100  # Increased for complex tasks
+  max_actions_per_task: 30
   emergency_kill_hotkey: "ctrl+alt+q"
-  enable_whitelist: false  # DISABLED - Agent can do everything
-  allowed_apps: []  # Not enforced when whitelist disabled
-  allowed_domains: []  # Not enforced when whitelist disabled
-  blocked_actions: []  # No restrictions - full power mode
+  enable_whitelist: false
+  allowed_apps: []
+  allowed_domains: []
+  blocked_actions: []
 
 # UI Settings
 ui:
   activation_hotkey: "ctrl+space"
   always_on_top: true
-  window_width: 600
+  window_width: 560
   window_height: 100
   transparency: 0.95
   font_size: 12
 
 # Observation Settings
 observation:
-  screenshot_on_action: true
+  # Screens remain in memory unless the user explicitly enables capture logging.
+  screenshot_on_action: false
   ocr_enabled: true
   ocr_languages: ["en"]
   dom_summarization: true
-  max_dom_elements: 100
+  max_dom_elements: 60
 
 # Execution Settings
 execution:
   desktop:
     click_delay: 0.5
     type_delay: 0.1
-    screenshot_before_click: true
+    screenshot_before_click: false
   browser:
     headless: false
-    viewport_width: 1920
-    viewport_height: 1080
+    viewport_width: 1280
+    viewport_height: 720
     default_timeout: 10000
     wait_after_navigation: 2
 
@@ -60,4 +61,4 @@ logging:
 memory:
   state_file: "state/current_task.json"
   history_file: "state/action_history.json"
-  max_history_items: 100
+  max_history_items: 50

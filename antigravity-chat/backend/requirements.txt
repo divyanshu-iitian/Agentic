@@ -1,7 +1,9 @@
-fastapi
-uvicorn
-groq
-python-dotenv
-edge-tts
-pydantic
-aiofiles
+fastapi>=0.115,<1
+uvicorn>=0.34,<1
+python-dotenv>=1.0,<2
+pydantic>=2.5,<3
+requests>=2.31,<3
+
+# Optional cloud and voice features:
+# groq
+# edge-tts

@@ -1,358 +1,506 @@
-import React, { useState, useRef, useEffect } from 'react';
-import axios from 'axios';
-import { Send, User, Bot, Volume2, Loader2, Sparkles, Zap } from 'lucide-react';
-import Antigravity from './components/Antigravity';
-import { NoiseBackground } from './components/ui/noise-background';
-import { cn } from './lib/utils';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  Check,
+  ChevronDown,
+  Eye,
+  EyeOff,
+  Feather,
+  Menu,
+  MessageSquarePlus,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Send,
+  Settings2,
+  Square,
+  Volume2,
+  VolumeX,
+  Wifi,
+  WifiOff,
+  X,
+} from 'lucide-react'
+
+type Sender = 'user' | 'assistant'
+type ConnectionState = 'checking' | 'online' | 'offline'
 
 interface Message {
-  id: string;
-  text: string;
-  sender: 'user' | 'ai';
-  audioUrl?: string;
-  timestamp: Date;
+  id: string
+  text: string
+  sender: Sender
+  audioUrl?: string
+  createdAt: Date
 }
 
-const Card = ({
-  className,
-  children,
-}: {
-  className?: string;
-  children: React.ReactNode;
-}) => {
-  return (
-    <div
-      className={cn(
-        "flex h-full flex-col overflow-hidden rounded-2xl bg-white/5 backdrop-blur-xl border border-white/10 text-center shadow-2xl",
-        className,
-      )}
-    >
-      {children}
-    </div>
-  );
-};
+interface HealthResponse {
+  status: string
+  provider: string
+  model: string
+  voice_enabled: boolean
+}
+
+interface ChatResponse {
+  response: string
+  audio_url?: string
+  provider: string
+  model: string
+}
+
+const API_URL = import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:8000'
+
+const starterPrompts = [
+  ['Plan my task', 'Break my goal into a small, practical plan.'],
+  ['Explain code', 'Explain this code simply and point out possible bugs.'],
+  ['Draft locally', 'Help me draft a clear document without sending data online.'],
+]
+
+function makeId() {
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+}
 
 function App() {
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const [messages, setMessages] = useState<Message[]>([])
+  const [input, setInput] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
+  const [connection, setConnection] = useState<ConnectionState>('checking')
+  const [health, setHealth] = useState<HealthResponse | null>(null)
+  const [privacyMode, setPrivacyMode] = useState(false)
+  const [quietMode, setQuietMode] = useState(
+    () => localStorage.getItem('agentic-quiet-mode') !== 'false',
+  )
+  const [sidebarOpen, setSidebarOpen] = useState(
+    () => window.innerWidth >= 900,
+  )
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const abortRef = useRef<AbortController | null>(null)
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLTextAreaElement>(null)
+  const audioRef = useRef<HTMLAudioElement>(null)
+
+  const statusText = useMemo(() => {
+    if (connection === 'checking') return 'Checking local runtime'
+    if (connection === 'offline') return 'Runtime offline'
+    return `${health?.provider ?? 'local'} · ${health?.model ?? 'ready'}`
+  }, [connection, health])
+
+  const checkHealth = useCallback(async () => {
+    setConnection('checking')
+    try {
+      const response = await fetch(`${API_URL}/health`, {
+        signal: AbortSignal.timeout(3500),
+      })
+      if (!response.ok) throw new Error('Runtime unavailable')
+      const data = (await response.json()) as HealthResponse
+      setHealth(data)
+      setConnection(data.status === 'ready' ? 'online' : 'offline')
+    } catch {
+      setConnection('offline')
+    }
+  }, [])
 
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTo({
-        top: scrollRef.current.scrollHeight,
-        behavior: 'smooth'
-      });
+    void checkHealth()
+  }, [checkHealth])
+
+  useEffect(() => {
+    localStorage.setItem('agentic-quiet-mode', String(quietMode))
+  }, [quietMode])
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo({
+      top: scrollRef.current.scrollHeight,
+      behavior: 'smooth',
+    })
+  }, [messages, isLoading])
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.ctrlKey && event.shiftKey && event.key.toLowerCase() === 'p') {
+        event.preventDefault()
+        setPrivacyMode((current) => !current)
+      }
+      if (event.ctrlKey && event.key.toLowerCase() === 'n') {
+        event.preventDefault()
+        abortRef.current?.abort()
+        setMessages([])
+        setInput('')
+        setError(null)
+        inputRef.current?.focus()
+      }
+      if (event.key === 'Escape') setSettingsOpen(false)
     }
-  }, [messages]);
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [])
 
-  const handleSend = async () => {
-    if (!input.trim() || isLoading) return;
+  const sendMessage = async (preset?: string) => {
+    const text = (preset ?? input).trim()
+    if (!text || isLoading) return
 
-    const userMsg: Message = {
-      id: Date.now().toString(),
-      text: input,
+    const userMessage: Message = {
+      id: makeId(),
+      text,
       sender: 'user',
-      timestamp: new Date(),
-    };
-
-    setMessages((prev) => [...prev, userMsg]);
-    setInput('');
-    setIsLoading(true);
+      createdAt: new Date(),
+    }
+    setMessages((current) => [...current, userMessage])
+    setInput('')
+    setError(null)
+    setIsLoading(true)
+    abortRef.current = new AbortController()
 
     try {
-      const response = await axios.post('http://localhost:8000/chat', {
-        message: input,
-      });
-
-      const aiMsg: Message = {
-        id: (Date.now() + 1).toString(),
-        text: response.data.response,
-        sender: 'ai',
-        audioUrl: response.data.audio_url,
-        timestamp: new Date(),
-      };
-
-      setMessages((prev) => [...prev, aiMsg]);
-
-      // Play audio automatically
-      if (aiMsg.audioUrl) {
-        if (audioRef.current) {
-          audioRef.current.src = aiMsg.audioUrl;
-          audioRef.current.play();
-        }
+      const response = await fetch(`${API_URL}/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: text,
+          history: messages.slice(-8).map((message) => ({
+            role: message.sender === 'assistant' ? 'assistant' : 'user',
+            content: message.text,
+          })),
+          voice: !quietMode,
+        }),
+        signal: abortRef.current.signal,
+      })
+      if (!response.ok) {
+        const detail = await response.json().catch(() => null) as { detail?: string } | null
+        throw new Error(detail?.detail ?? 'The local runtime returned an error.')
       }
-    } catch (error) {
-      console.error('Error sending message:', error);
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: 'error',
-          text: '⚠️ Connection error. Please ensure the backend is running on port 8000.',
-          sender: 'ai',
-          timestamp: new Date(),
-        },
-      ]);
+
+      const data = (await response.json()) as ChatResponse
+      const assistantMessage: Message = {
+        id: makeId(),
+        text: data.response,
+        sender: 'assistant',
+        audioUrl: data.audio_url
+          ? new URL(data.audio_url, API_URL).toString()
+          : undefined,
+        createdAt: new Date(),
+      }
+      setMessages((current) => [...current, assistantMessage])
+      setConnection('online')
+
+      if (!quietMode && data.audio_url && audioRef.current) {
+        audioRef.current.src = data.audio_url
+        await audioRef.current.play().catch(() => undefined)
+      }
+    } catch (requestError) {
+      if ((requestError as Error).name !== 'AbortError') {
+        setError((requestError as Error).message)
+        setConnection('offline')
+      }
     } finally {
-      setIsLoading(false);
-      inputRef.current?.focus();
+      setIsLoading(false)
+      abortRef.current = null
+      inputRef.current?.focus()
     }
-  };
+  }
+
+  const stopGeneration = () => {
+    abortRef.current?.abort()
+    setIsLoading(false)
+  }
+
+  const startNewChat = () => {
+    abortRef.current?.abort()
+    setMessages([])
+    setInput('')
+    setError(null)
+    inputRef.current?.focus()
+  }
 
   return (
-    <div className="relative h-screen w-screen overflow-hidden bg-gradient-to-br from-black via-purple-950/20 to-black text-white selection:bg-purple-500/30">
-      {/* Animated Background Layer */}
-      <div className="absolute inset-0 z-0">
-        <Antigravity
-          count={500}
-          magnetRadius={6}
-          ringRadius={9}
-          waveSpeed={0.6}
-          waveAmplitude={2}
-          particleSize={1.3}
-          color="#A855F7"
-          autoAnimate
-          particleVariance={2.5}
-          rotationSpeed={0.015}
-          pulseSpeed={2.5}
-          particleShape="capsule"
-          fieldStrength={12}
-        />
-      </div>
-
-      {/* Gradient Overlays for Depth */}
-      <div className="absolute inset-0 z-[1] bg-gradient-to-t from-black/60 via-transparent to-black/40 pointer-events-none" />
-      <div className="absolute inset-0 z-[1] bg-[radial-gradient(ellipse_at_center,_transparent_0%,_rgba(0,0,0,0.4)_100%)] pointer-events-none" />
-
-      {/* Main Chat Interface */}
-      <div className="relative z-10 flex h-full flex-col items-center justify-center p-4 md:p-6 lg:p-8">
-        <div className="w-full max-w-5xl flex flex-col h-[92vh] gap-4">
-
-          {/* Premium Header */}
-          <div className="flex items-center justify-between px-6 py-4 rounded-2xl bg-black/40 backdrop-blur-xl border border-white/10 shadow-2xl">
-            <div className="flex items-center gap-4">
-              <div className="relative">
-                <div className="absolute inset-0 bg-purple-500 blur-xl opacity-50 animate-pulse" />
-                <div className="relative w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center shadow-lg">
-                  <Sparkles className="w-6 h-6 text-white" />
-                </div>
-              </div>
-              <div>
-                <h1 className="text-2xl md:text-3xl font-bold tracking-tight bg-gradient-to-r from-purple-400 via-pink-400 to-purple-400 bg-clip-text text-transparent animate-gradient">
-                  ANTIGRAVITY AI
-                </h1>
-                <p className="text-xs text-neutral-400 font-medium">Powered by Neural Intelligence</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="hidden md:flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10">
-                <Zap className="w-4 h-4 text-yellow-400" />
-                <span className="text-xs font-semibold text-neutral-300">ULTRA FAST</span>
-              </div>
-              <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
-                <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shadow-lg shadow-emerald-400/50" />
-                <span className="text-xs font-semibold text-emerald-400 uppercase tracking-wider">Online</span>
-              </div>
-            </div>
+    <main className="app-shell">
+      <aside className={`sidebar ${sidebarOpen ? 'sidebar-open' : ''}`}>
+        <div className="brand-row">
+          <div className="brand-mark" aria-hidden="true">
+            <Feather size={18} />
           </div>
-
-          {/* Messages Area with Premium Styling */}
-          <div
-            ref={scrollRef}
-            className="flex-1 overflow-y-auto space-y-6 px-2 scrollbar-thin scrollbar-thumb-purple-500/20 scrollbar-track-transparent hover:scrollbar-thumb-purple-500/40 transition-all"
+          <div>
+            <strong>Agentic</strong>
+            <span>Local companion</span>
+          </div>
+          <button
+            className="icon-button sidebar-close"
+            onClick={() => setSidebarOpen(false)}
+            aria-label="Close sidebar"
           >
-            {messages.length === 0 && (
-              <div className="h-full flex flex-col items-center justify-center space-y-8 animate-in fade-in duration-1000">
-                <div className="relative">
-                  <div className="absolute inset-0 bg-purple-500 blur-3xl opacity-30 animate-pulse" />
-                  <Bot size={80} className="text-purple-400 relative animate-float" />
-                </div>
-                <div className="text-center space-y-3 max-w-md">
-                  <h2 className="text-3xl font-bold bg-gradient-to-r from-purple-300 to-pink-300 bg-clip-text text-transparent">
-                    Welcome to Antigravity
-                  </h2>
-                  <p className="text-lg text-neutral-400 font-light leading-relaxed">
-                    Experience the future of AI conversation with voice synthesis
-                  </p>
-                </div>
-                <div className="flex flex-wrap gap-3 justify-center max-w-2xl">
-                  {['Tell me a story', 'Explain quantum physics', 'Write a poem'].map((suggestion, i) => (
-                    <button
-                      key={i}
-                      onClick={() => setInput(suggestion)}
-                      className="px-5 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-purple-500/50 text-sm text-neutral-300 hover:text-white transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-purple-500/20"
-                    >
-                      {suggestion}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
+            <PanelLeftClose size={18} />
+          </button>
+        </div>
 
-            {messages.map((msg, index) => (
-              <div
-                key={msg.id}
-                className={cn(
-                  "flex w-full group animate-in fade-in slide-in-from-bottom-4 duration-500",
-                  msg.sender === 'user' ? "justify-end" : "justify-start"
-                )}
-                style={{ animationDelay: `${index * 50}ms` }}
-              >
-                <div className={cn(
-                  "flex gap-4 max-w-[85%] md:max-w-[75%]",
-                  msg.sender === 'user' ? "flex-row-reverse" : "flex-row"
-                )}>
-                  {/* Avatar */}
-                  <div className={cn(
-                    "w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-xl relative",
-                    msg.sender === 'user'
-                      ? "bg-gradient-to-br from-purple-600 to-pink-600"
-                      : "bg-gradient-to-br from-neutral-800 to-neutral-900 border border-white/10"
-                  )}>
-                    {msg.sender === 'user' ? (
-                      <User size={18} className="text-white" />
-                    ) : (
-                      <>
-                        <div className="absolute inset-0 bg-purple-500 blur-md opacity-20 animate-pulse" />
-                        <Bot size={18} className="text-purple-400 relative" />
-                      </>
-                    )}
-                  </div>
+        <button className="new-chat-button" onClick={startNewChat}>
+          <MessageSquarePlus size={17} />
+          New chat
+          <kbd>Ctrl N</kbd>
+        </button>
 
-                  {/* Message Bubble */}
-                  <div className="flex flex-col gap-2">
-                    <div className={cn(
-                      "relative px-5 py-3.5 rounded-2xl text-sm leading-relaxed transition-all duration-300 group-hover:scale-[1.02]",
-                      msg.sender === 'user'
-                        ? "bg-gradient-to-br from-purple-600 to-purple-700 text-white rounded-tr-sm shadow-xl shadow-purple-500/20"
-                        : "bg-gradient-to-br from-neutral-900/90 to-neutral-800/90 backdrop-blur-xl border border-white/10 text-neutral-100 rounded-tl-sm shadow-2xl hover:border-purple-500/30"
-                    )}>
-                      <p className="whitespace-pre-wrap">{msg.text}</p>
+        <nav className="sidebar-nav" aria-label="Chat history">
+          <p>Today</p>
+          {messages.length > 0 ? (
+            <button className="history-item active">
+              <span>{messages[0]?.text.slice(0, 34)}</span>
+              <small>{messages.length} messages</small>
+            </button>
+          ) : (
+            <div className="history-empty">Your local chats appear here.</div>
+          )}
+        </nav>
 
-                      {/* Voice Button for AI messages */}
-                      {msg.sender === 'ai' && msg.audioUrl && (
-                        <button
-                          onClick={() => {
-                            if (audioRef.current) {
-                              audioRef.current.src = msg.audioUrl!;
-                              audioRef.current.play();
-                            }
-                          }}
-                          className="absolute -right-12 top-3 opacity-0 group-hover:opacity-100 transition-all duration-300 p-2.5 rounded-xl bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/30 hover:border-purple-500/50 backdrop-blur-sm hover:scale-110"
-                          title="Play voice"
-                        >
-                          <Volume2 size={16} className="text-purple-400" />
-                        </button>
-                      )}
-                    </div>
-                    <span className={cn(
-                      "text-[10px] text-neutral-500 font-medium px-2",
-                      msg.sender === 'user' ? "text-right" : "text-left"
-                    )}>
-                      {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            ))}
-
-            {isLoading && (
-              <div className="flex justify-start animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <div className="flex gap-4 max-w-[75%]">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-neutral-800 to-neutral-900 border border-white/10 flex items-center justify-center relative shadow-xl">
-                    <div className="absolute inset-0 bg-purple-500 blur-md opacity-20 animate-pulse" />
-                    <Loader2 size={18} className="animate-spin text-purple-400 relative" />
-                  </div>
-                  <div className="px-5 py-3.5 rounded-2xl rounded-tl-sm bg-gradient-to-br from-neutral-900/50 to-neutral-800/50 backdrop-blur-xl border border-white/10 text-neutral-400 text-sm shadow-2xl">
-                    <div className="flex items-center gap-2">
-                      <div className="flex gap-1">
-                        <div className="w-2 h-2 rounded-full bg-purple-400 animate-bounce" style={{ animationDelay: '0ms' }} />
-                        <div className="w-2 h-2 rounded-full bg-purple-400 animate-bounce" style={{ animationDelay: '150ms' }} />
-                        <div className="w-2 h-2 rounded-full bg-purple-400 animate-bounce" style={{ animationDelay: '300ms' }} />
-                      </div>
-                      <span className="italic">Antigravity is thinking...</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Premium Input Area */}
-          <div className="px-2 pb-2">
-            <NoiseBackground
-              className="rounded-2xl"
-              gradientColors={[
-                "rgb(168, 85, 247)", // Purple
-                "rgb(236, 72, 153)", // Pink
-                "rgb(147, 51, 234)", // Deep Purple
-              ]}
-              noiseIntensity={0.15}
-              speed={0.2}
-            >
-              <Card className="min-h-[auto] p-1.5 bg-black/60 backdrop-blur-2xl border-white/20 shadow-2xl">
-                <div className="flex items-end gap-3 p-2">
-                  <div className="flex-1 relative">
-                    <textarea
-                      ref={inputRef as any}
-                      value={input}
-                      onChange={(e) => {
-                        setInput(e.target.value);
-                        e.target.style.height = 'auto';
-                        e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && !e.shiftKey) {
-                          e.preventDefault();
-                          handleSend();
-                        }
-                      }}
-                      placeholder="Message Antigravity AI..."
-                      rows={1}
-                      className="w-full bg-transparent border-none outline-none px-4 py-3 text-sm placeholder:text-neutral-500 resize-none max-h-[120px] scrollbar-thin scrollbar-thumb-purple-500/20 scrollbar-track-transparent"
-                      style={{ minHeight: '44px' }}
-                    />
-                  </div>
-                  <button
-                    onClick={handleSend}
-                    disabled={isLoading || !input.trim()}
-                    className={cn(
-                      "p-3.5 rounded-xl transition-all duration-300 flex items-center justify-center relative group shrink-0",
-                      input.trim()
-                        ? "bg-gradient-to-br from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white shadow-xl shadow-purple-500/30 hover:shadow-2xl hover:shadow-purple-500/40 hover:scale-105 active:scale-95"
-                        : "bg-white/5 text-neutral-600 cursor-not-allowed"
-                    )}
-                  >
-                    {input.trim() && !isLoading && (
-                      <div className="absolute inset-0 bg-white/20 rounded-xl blur-md group-hover:blur-lg transition-all" />
-                    )}
-                    {isLoading ? (
-                      <Loader2 size={20} className="animate-spin relative" />
-                    ) : (
-                      <Send size={20} className="relative" />
-                    )}
-                  </button>
-                </div>
-                <div className="px-4 pb-2 pt-1">
-                  <p className="text-[10px] text-neutral-500 text-center font-medium">
-                    Press <kbd className="px-1.5 py-0.5 rounded bg-white/5 border border-white/10 font-mono">Enter</kbd> to send • <kbd className="px-1.5 py-0.5 rounded bg-white/5 border border-white/10 font-mono">Shift + Enter</kbd> for new line
-                  </p>
-                </div>
-              </Card>
-            </NoiseBackground>
+        <div className="sidebar-footer">
+          <button onClick={() => setSettingsOpen(true)}>
+            <Settings2 size={17} />
+            Settings
+          </button>
+          <div className="device-note">
+            <Feather size={15} />
+            <span>
+              <strong>Lite mode</strong>
+              No WebGL. Minimal GPU use.
+            </span>
           </div>
         </div>
-      </div>
+      </aside>
 
-      <audio ref={audioRef} className="hidden" />
+      <section className="workspace">
+        <header className="topbar">
+          <div className="topbar-left">
+            <button
+              className="icon-button"
+              onClick={() => setSidebarOpen((current) => !current)}
+              aria-label={sidebarOpen ? 'Close sidebar' : 'Open sidebar'}
+            >
+              {sidebarOpen ? <PanelLeftClose size={19} /> : <PanelLeftOpen size={19} />}
+            </button>
+            <div className="conversation-title">
+              <strong>New conversation</strong>
+              <span className={`runtime-state ${connection}`}>
+                {connection === 'online' ? <Wifi size={12} /> : <WifiOff size={12} />}
+                {statusText}
+              </span>
+            </div>
+          </div>
 
-      {/* Subtle Vignette Effect */}
-      <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_center,_transparent_0%,_rgba(0,0,0,0.3)_100%)] z-[2]" />
-    </div>
-  );
+          <div className="topbar-actions">
+            <button
+              className={`text-button ${privacyMode ? 'active' : ''}`}
+              onClick={() => setPrivacyMode((current) => !current)}
+              title="Toggle Privacy Mode (Ctrl + Shift + P)"
+            >
+              {privacyMode ? <EyeOff size={16} /> : <Eye size={16} />}
+              <span>{privacyMode ? 'Content hidden' : 'Privacy'}</span>
+            </button>
+            <button
+              className="icon-button mobile-settings"
+              onClick={() => setSettingsOpen(true)}
+              aria-label="Open settings"
+            >
+              <Settings2 size={18} />
+            </button>
+          </div>
+        </header>
+
+        <div
+          className={`conversation ${privacyMode ? 'privacy-active' : ''}`}
+          ref={scrollRef}
+          aria-live="polite"
+        >
+          {privacyMode ? (
+            <div className="privacy-screen">
+              <div className="privacy-icon"><EyeOff size={22} /></div>
+              <h1>Conversation hidden</h1>
+              <p>Your content is masked while Privacy Mode is active.</p>
+              <button onClick={() => setPrivacyMode(false)}>
+                <Eye size={16} />
+                Show conversation
+              </button>
+              <kbd>Ctrl + Shift + P</kbd>
+            </div>
+          ) : messages.length === 0 ? (
+            <div className="welcome">
+              <div className="welcome-mark"><Feather size={24} /></div>
+              <h1>What are we building?</h1>
+              <p>
+                A private assistant that stays useful on everyday hardware.
+                Start with a task, question, or idea.
+              </p>
+              <div className="starter-list">
+                {starterPrompts.map(([title, prompt]) => (
+                  <button key={title} onClick={() => void sendMessage(prompt)}>
+                    <span>
+                      <strong>{title}</strong>
+                      <small>{prompt}</small>
+                    </span>
+                    <Send size={15} />
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="message-list">
+              {messages.map((message) => (
+                <article className={`message ${message.sender}`} key={message.id}>
+                  <div className="message-avatar">
+                    {message.sender === 'assistant' ? <Feather size={16} /> : 'You'}
+                  </div>
+                  <div className="message-body">
+                    <div className="message-meta">
+                      <strong>{message.sender === 'assistant' ? 'Agentic' : 'You'}</strong>
+                      <time>
+                        {message.createdAt.toLocaleTimeString([], {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </time>
+                    </div>
+                    <p>{message.text}</p>
+                    {message.audioUrl && (
+                      <button
+                        className="play-button"
+                        onClick={() => {
+                          if (!audioRef.current) return
+                          audioRef.current.src = message.audioUrl ?? ''
+                          void audioRef.current.play()
+                        }}
+                      >
+                        <Volume2 size={14} />
+                        Play response
+                      </button>
+                    )}
+                  </div>
+                </article>
+              ))}
+              {isLoading && (
+                <article className="message assistant loading-message">
+                  <div className="message-avatar"><Feather size={16} /></div>
+                  <div className="message-body">
+                    <div className="message-meta"><strong>Agentic</strong></div>
+                    <div className="thinking-lines" aria-label="Agentic is thinking">
+                      <span />
+                      <span />
+                      <span />
+                    </div>
+                  </div>
+                </article>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className="composer-wrap">
+          {error && (
+            <div className="error-banner" role="alert">
+              <WifiOff size={16} />
+              <span>{error}</span>
+              <button onClick={() => setError(null)} aria-label="Dismiss error">
+                <X size={15} />
+              </button>
+            </div>
+          )}
+          <div className="composer">
+            <textarea
+              ref={inputRef}
+              value={input}
+              onChange={(event) => setInput(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' && !event.shiftKey) {
+                  event.preventDefault()
+                  void sendMessage()
+                }
+              }}
+              placeholder={connection === 'offline' ? 'Start the local runtime to chat...' : 'Message Agentic...'}
+              rows={1}
+              disabled={privacyMode}
+              aria-label="Message Agentic"
+            />
+            <div className="composer-tools">
+              <button
+                className={`quiet-toggle ${quietMode ? 'active' : ''}`}
+                onClick={() => setQuietMode((current) => !current)}
+                title={quietMode ? 'Voice output is off' : 'Voice output is on'}
+              >
+                {quietMode ? <VolumeX size={16} /> : <Volume2 size={16} />}
+              </button>
+              {isLoading ? (
+                <button className="send-button stop" onClick={stopGeneration} aria-label="Stop">
+                  <Square size={15} fill="currentColor" />
+                </button>
+              ) : (
+                <button
+                  className="send-button"
+                  onClick={() => void sendMessage()}
+                  disabled={!input.trim() || privacyMode}
+                  aria-label="Send message"
+                >
+                  <Send size={17} />
+                </button>
+              )}
+            </div>
+          </div>
+          <p className="composer-note">
+            Local models can make mistakes. Review actions before they run.
+          </p>
+        </div>
+      </section>
+
+      {settingsOpen && (
+        <div className="modal-backdrop" onMouseDown={() => setSettingsOpen(false)}>
+          <section
+            className="settings-panel"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="settings-title"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <header>
+              <div>
+                <h2 id="settings-title">Runtime settings</h2>
+                <p>Simple defaults for private, low-resource use.</p>
+              </div>
+              <button
+                className="icon-button"
+                onClick={() => setSettingsOpen(false)}
+                aria-label="Close settings"
+              >
+                <X size={18} />
+              </button>
+            </header>
+            <div className="settings-group">
+              <label>Provider</label>
+              <button className="select-row" onClick={checkHealth}>
+                <span>
+                  <strong>{health?.provider ?? 'Auto detect'}</strong>
+                  <small>{health?.model ?? 'Connect to inspect the runtime'}</small>
+                </span>
+                <ChevronDown size={16} />
+              </button>
+            </div>
+            <div className="settings-group">
+              <label>Performance</label>
+              <div className="option-row selected">
+                <span>
+                  <strong>Lite interface</strong>
+                  <small>Static surfaces, low memory, no continuous GPU work.</small>
+                </span>
+                <Check size={17} />
+              </div>
+            </div>
+            <button className="connection-button" onClick={checkHealth}>
+              {connection === 'online' ? <Wifi size={16} /> : <WifiOff size={16} />}
+              Check connection
+            </button>
+          </section>
+        </div>
+      )}
+
+      {!sidebarOpen && (
+        <button className="mobile-menu" onClick={() => setSidebarOpen(true)} aria-label="Open menu">
+          <Menu size={19} />
+        </button>
+      )}
+      <audio ref={audioRef} hidden />
+    </main>
+  )
 }
 
-export default App;
+export default App

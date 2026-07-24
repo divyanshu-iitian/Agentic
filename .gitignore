@@ -1,42 +1,55 @@
 # Python
 __pycache__/
 *.py[cod]
-*$py.class
 *.so
 .Python
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.venv/
 venv/
 env/
-ENV/
 
-# IDE
+# JavaScript
+node_modules/
+dist/
+*.tsbuildinfo
+
+# Local configuration and secrets
+.env
+.env.*
+!**/.env.example
+
+# Runtime state and generated media
+logs/
+state/
+agent_memory.json
+screenshots/
+audio_responses/
+voice_cache/
+voice_output/
+temp_vision_context.png
+*.log
+
+# Models and local browser data
+*.pth
+*.onnx
+.playwright/
+.playwright-cli/
+
+# Agent verification artifacts
+.agent_tmp/
+output/playwright/
+
+# Separate local repositories and drafts
+GithubAgent/
+LINKEDIN_POST.md
+
+# Editors and operating systems
 .vscode/
 .idea/
 *.swp
 *.swo
-
-# Environment
-.env
-.venv/
-
-# Logs
-logs/
-*.log
-
-# State
-state/
-*.json
-
-# OS
 .DS_Store
 Thumbs.db
-
-# Screenshots
-screenshots/
-*.png
-
-# OCR Models
-*.pth
-*.onnx
-
-# Playwright
-.playwright/

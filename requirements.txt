@@ -1,27 +1,18 @@
-# Core Dependencies
-python-dotenv==1.0.0
-pyyaml==6.0.1
+# Configuration and local model runtime
+python-dotenv>=1.0,<2
+pyyaml>=6.0,<7
+requests>=2.31,<3
 
-# LLM Integration
-ollama==0.1.6
-requests==2.31.0
+# Desktop and browser automation
+pyautogui>=0.9.54,<1
+keyboard>=0.13.5,<1
+pillow>=10.2,<13
+playwright>=1.50,<2
 
-# Desktop Automation
-pyautogui==0.9.54
-keyboard==0.13.5
-mouse==0.7.1
-pillow==10.2.0
+# OCR and desktop UI
+pytesseract>=0.3.13,<1
+customtkinter>=5.2,<6
 
-# Browser Automation
-playwright==1.41.2
-
-# OCR and Vision
-easyocr==1.7.0
-opencv-python==4.9.0.80
-
-# UI
-# Tkinter is built-in with Python
-
-# Utilities
-loguru==0.7.2
-pydantic==2.5.3
+# Validation and logging
+loguru>=0.7,<1
+pydantic>=2.5,<3
