@@ -207,6 +207,8 @@ packaging, and repeatable low-end hardware benchmarks. See
 
 ## Contributing
 
+Trying Agentic for the first time? [Share setup and hardware feedback](https://github.com/divyanshu-iitian/Agentic/issues/new?template=setup-feedback.yml), including where setup stopped or what worked on your machine. Please remove credentials, private conversations, and sensitive screen content from logs.
+
 Focused improvements are welcome, especially lower memory use, safer
 permissions, accessible UI, deterministic tests, and narrowly scoped skills.
 Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request.
