@@ -1,0 +1,50 @@
+name: Setup and hardware feedback
+description: Share a first-run experience or a reproducible low-resource result
+title: "[Setup feedback]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for trying Agentic. Please remove credentials, private conversations, and sensitive screen content before submitting.
+  - type: dropdown
+    id: outcome
+    attributes:
+      label: Setup outcome
+      options:
+        - Completed and tried local chat
+        - Completed setup but could not run local chat
+        - Could not complete setup
+    validations:
+      required: true
+  - type: input
+    id: machine
+    attributes:
+      label: Machine
+      description: Windows version, CPU, and RAM are enough. Do not include a device serial number.
+      placeholder: Windows 11, Ryzen 5 5500U, 8 GB RAM
+    validations:
+      required: true
+  - type: input
+    id: model
+    attributes:
+      label: Ollama model and quantization
+      placeholder: qwen2.5:3b, if known
+  - type: textarea
+    id: experience
+    attributes:
+      label: What happened?
+      description: Include the step where you got stuck, or the task you tried and what worked. If reporting speed, include how you measured it.
+      placeholder: I followed the Quick start through step 3. The frontend opened, but...
+    validations:
+      required: true
+  - type: textarea
+    id: boundaries
+    attributes:
+      label: Automation controls
+      description: Optional. What would you need to understand or control before enabling desktop automation?
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant sanitized error output
+      description: Remove credentials, personal data, file paths that identify you, and private screen content.
+      render: shell
