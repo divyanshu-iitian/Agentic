@@ -474,6 +474,10 @@ revisions, delegation, provider wire formats, MCP over stdio, the scheduler,
 the gateway API, and the CLI. CI runs them on Linux and Windows with Python 3.10
 and 3.12.
 
+Trying Agentic for the first time? [Share setup and hardware feedback](https://github.com/divyanshu-iitian/Agentic/issues/new?template=setup-feedback.yml),
+including where setup stopped or what worked on your machine. Please remove
+credentials, private conversations, and sensitive screen content from logs.
+
 Contributions are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) first, see
 [the roadmap](docs/roadmap.md), and report security issues privately as
 described in [SECURITY.md](SECURITY.md). Release history is in
