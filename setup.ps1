@@ -20,6 +20,7 @@ if (-not (Test-Path -LiteralPath $virtualEnv)) {
 }
 
 & $python -m pip install --upgrade pip
+& $python -m pip install -e "$projectRoot[all]"
 & $python -m pip install -r (Join-Path $projectRoot "requirements.txt")
 & $python -m pip install -r (Join-Path $projectRoot "agentic-app\backend\requirements.txt")
 & $python -m playwright install chromium
@@ -42,6 +43,9 @@ else {
 
 Write-Host ""
 Write-Host "Setup complete." -ForegroundColor Green
+Write-Host "Agentic:       .\.venv\Scripts\agentic.exe init; .\.venv\Scripts\agentic.exe doctor"
+Write-Host "Swarm:         .\.venv\Scripts\agentic.exe swarm 'your goal'"
+Write-Host "Dashboard:     .\.venv\Scripts\agentic.exe serve  (http://127.0.0.1:8765)"
 Write-Host "Desktop agent: .\.venv\Scripts\python.exe main.py"
 Write-Host "Chat backend:  cd agentic-app\backend; ..\..\.venv\Scripts\python.exe main.py"
 Write-Host "Chat frontend: cd agentic-app\frontend; npm run dev"

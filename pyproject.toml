@@ -1,3 +1,52 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agentic"
+dynamic = ["version"]
+description = "Local-first multi-head agent runtime: swarms of specialist AI agents with tools, memory, MCP, schedules, and approvals."
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.10"
+authors = [{ name = "Divyanshu Mishra" }]
+keywords = ["agents", "multi-agent", "llm", "ollama", "automation", "mcp", "local-first"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+  "requests>=2.31,<3",
+  "pyyaml>=6.0,<7",
+  "pydantic>=2.5,<3",
+  "fastapi>=0.115,<1",
+  "uvicorn>=0.34,<1",
+]
+
+[project.optional-dependencies]
+browser = ["playwright>=1.50,<2"]
+desktop = ["pyautogui>=0.9.54,<1", "pytesseract>=0.3.13,<1", "pillow>=10.2,<13"]
+all = ["agentic[browser,desktop]"]
+dev = ["pytest>=8.0,<9", "ruff>=0.9,<1", "httpx>=0.27,<1"]
+
+[project.scripts]
+agentic = "agentic.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/divyanshu-iitian/Agentic"
+Issues = "https://github.com/divyanshu-iitian/Agentic/issues"
+
+[tool.setuptools.dynamic]
+version = { attr = "agentic.__version__" }
+
+[tool.setuptools.packages.find]
+include = ["agentic*"]
+
+[tool.setuptools.package-data]
+agentic = ["profiles/*.md", "static/*.html", "templates/*.yaml"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
@@ -5,7 +54,7 @@ addopts = "-q"
 [tool.ruff]
 target-version = "py310"
 line-length = 100
-exclude = ["GithubAgent", "agentic-app/frontend"]
+exclude = ["GithubAgent", "agentic-app/frontend", ".agent_tmp"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP"]

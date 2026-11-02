@@ -53,3 +53,9 @@ LINKEDIN_POST.md
 *.swo
 .DS_Store
 Thumbs.db
+
+# Agentic runtime data and default workspace
+.agentic/
+workspace/
+*.egg-info/
+build/

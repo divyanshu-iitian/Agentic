@@ -1,0 +1,74 @@
+# Agentic configuration. Every key is optional; these are the defaults plus
+# commented examples. Paths are relative to this file.
+
+default_provider: local
+
+providers:
+  local:
+    type: ollama                  # ollama | openai | anthropic
+    model: qwen2.5:3b             # 8 GB RAM friendly; try qwen2.5:7b or llama3.1:8b on 16 GB
+    base_url: http://127.0.0.1:11434
+    tool_mode: native             # use "prompt" if a small model ignores native tool calls
+    context_window: 8192
+  # Any OpenAI-compatible API (OpenAI, Groq, OpenRouter, LM Studio, vLLM, ...):
+  # groq:
+  #   type: openai
+  #   base_url: https://api.groq.com/openai/v1
+  #   api_key_env: GROQ_API_KEY
+  #   model: llama-3.3-70b-versatile
+  # claude:
+  #   type: anthropic
+  #   api_key_env: ANTHROPIC_API_KEY
+  #   model: claude-sonnet-5-5
+
+workspace: workspace              # file and shell tools are confined here
+data_dir: .agentic                # SQLite database: memories, runs, events, schedules
+heads_dir: heads                  # your own heads (*.md) add to or override the built-ins
+skills_dir: skills                # SKILL.md instruction packs
+
+# auto = run without asking, ask = require approval, deny = never
+permissions:
+  read: auto
+  memory: auto
+  network: auto
+  write: ask
+  execute: ask
+  schedule: ask
+  desktop: ask
+
+limits:
+  max_steps: 12                   # tool-calling steps per head
+  max_parallel: 3                 # heads running at once in a swarm
+  max_tasks: 8                    # tasks per swarm plan
+  max_revisions: 1                # critic-requested revision rounds
+  max_delegation_depth: 2
+  tool_timeout: 60
+  tool_output_chars: 12000
+  approval_timeout: 300
+
+network:
+  allowed_domains: []             # empty = any public host
+  allow_private_hosts: false      # keep false unless you trust every page the agent reads
+
+# Model Context Protocol servers; their tools appear as mcp__<server>__<tool>.
+mcp_servers: {}
+  # filesystem:
+  #   command: npx
+  #   args: ["-y", "@modelcontextprotocol/server-filesystem", "./workspace"]
+  #   permission: write
+
+gateway:
+  host: 127.0.0.1
+  port: 8765
+  token_env: AGENTIC_TOKEN        # set this variable to require a bearer token
+
+channels:
+  telegram:
+    enabled: false
+    token_env: TELEGRAM_BOT_TOKEN
+    allowed_chat_ids: []          # your numeric chat id; unknown chats are ignored
+
+scheduler:
+  enabled: true
+  poll_seconds: 15
+  unattended_permissions: [read, memory, network]

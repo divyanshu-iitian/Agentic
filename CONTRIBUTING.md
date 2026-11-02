@@ -9,6 +9,8 @@ Thanks for helping make local AI practical on ordinary computers.
 - improve keyboard navigation, contrast, or screen reader support
 - document a reproducible hardware benchmark
 - add a narrow instruction skill with clear triggers
+- add a specialist head (`agentic/profiles/*.md`) with a focused tool list
+- add a tool with a strict schema, the right permission tier, and tests
 
 ## Before opening a pull request
 
@@ -17,11 +19,13 @@ Thanks for helping make local AI practical on ordinary computers.
 3. Add or update tests for behavior changes.
 4. Run the relevant checks:
 
-```powershell
-python -m pytest test_skills.py
-python -m compileall core agentic-app\backend
+```bash
+pip install -e ".[dev]" loguru
+python -m pytest
+python -m ruff check .
 
-cd agentic-app\frontend
+# only when you change the React chat app
+cd agentic-app/frontend
 npm run lint
 npm run build
 ```

@@ -1,0 +1,406 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agentic Mission Control</title>
+<style>
+:root {
+  --bg: #f6f7f9; --panel: #ffffff; --line: #e3e6eb; --text: #15181d; --muted: #66707d;
+  --accent: #2f6fde; --accent-soft: #e8f0fd; --ok: #1f8a4c; --warn: #b26a00; --bad: #c4362c;
+  --mono: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1216; --panel: #161a20; --line: #262c35; --text: #e6e9ee; --muted: #8b95a3;
+    --accent: #6ea1ff; --accent-soft: #1b2638; --ok: #4cc283; --warn: #e0a24a; --bad: #ef6b60;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1216; --panel: #161a20; --line: #262c35; --text: #e6e9ee; --muted: #8b95a3;
+  --accent: #6ea1ff; --accent-soft: #1b2638; --ok: #4cc283; --warn: #e0a24a; --bad: #ef6b60;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text);
+  font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+header { display: flex; align-items: center; gap: 12px; padding: 12px 16px;
+  border-bottom: 1px solid var(--line); background: var(--panel); flex-wrap: wrap; }
+header h1 { font-size: 16px; margin: 0; letter-spacing: .2px; }
+.pill { font-size: 12px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line);
+  color: var(--muted); white-space: nowrap; }
+.pill.ok { color: var(--ok); border-color: currentColor; }
+.pill.bad { color: var(--bad); border-color: currentColor; }
+.spacer { flex: 1; }
+main { display: grid; grid-template-columns: 320px minmax(0, 1fr) 320px; gap: 12px; padding: 12px;
+  max-width: 1600px; margin: 0 auto; }
+main > div { min-width: 0; }
+@media (max-width: 1100px) { main { grid-template-columns: minmax(0, 1fr); padding: 12px 16px; } }
+section { background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+  padding: 12px; margin-bottom: 12px; min-width: 0; }
+section h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted);
+  margin: 0 0 8px; display: flex; align-items: center; gap: 8px; }
+textarea, input, select { width: 100%; font: inherit; color: var(--text); background: var(--bg);
+  border: 1px solid var(--line); border-radius: 8px; padding: 8px; }
+textarea { min-height: 96px; resize: vertical; }
+.row { display: flex; gap: 8px; margin-top: 8px; }
+.row > * { flex: 1; min-width: 0; }
+button { font: inherit; border: 1px solid var(--line); background: var(--panel); color: var(--text);
+  border-radius: 8px; padding: 7px 12px; cursor: pointer; }
+button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+button.small { padding: 3px 8px; font-size: 12px; }
+button.ok { color: var(--ok); border-color: currentColor; }
+button.bad { color: var(--bad); border-color: currentColor; }
+button:focus-visible, textarea:focus-visible, input:focus-visible, select:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 1px; }
+.list { list-style: none; margin: 0; padding: 0; }
+.list li { padding: 8px; border-radius: 8px; cursor: pointer; border: 1px solid transparent; }
+.list li:hover { background: var(--bg); }
+.list li.active { background: var(--accent-soft); border-color: var(--accent); }
+.meta { color: var(--muted); font-size: 12px; }
+.goal { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px;
+  background: var(--muted); }
+.status-dot.running { background: var(--warn); animation: pulse 1.2s infinite; }
+.status-dot.completed { background: var(--ok); }
+.status-dot.failed, .status-dot.cancelled { background: var(--bad); }
+@keyframes pulse { 50% { opacity: .35; } }
+@media (prefers-reduced-motion: reduce) { .status-dot.running { animation: none; } }
+.timeline { display: flex; flex-direction: column; gap: 6px; }
+.ev { border-left: 3px solid var(--line); padding: 4px 10px; }
+.ev .head { font-weight: 600; }
+.ev pre, .output { font-family: var(--mono); font-size: 12px; white-space: pre-wrap; word-break: break-word;
+  margin: 4px 0 0; color: var(--muted); max-height: 260px; overflow: auto; }
+.ev.tool { border-color: var(--accent); }
+.ev.good { border-color: var(--ok); }
+.ev.badev { border-color: var(--bad); }
+.ev.plan { border-color: var(--warn); }
+.output { color: var(--text); max-height: none; font-family: inherit; font-size: 14px; }
+.tag { font-family: var(--mono); font-size: 11px; padding: 1px 6px; border-radius: 6px;
+  background: var(--bg); border: 1px solid var(--line); }
+.approval { border: 1px solid var(--warn); border-radius: 8px; padding: 8px; margin-bottom: 8px; }
+.empty { color: var(--muted); font-size: 13px; }
+#auth { display: none; }
+.plan-task { font-size: 13px; margin: 2px 0; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Agentic Mission Control</h1>
+  <span id="conn" class="pill">connecting</span>
+  <span id="model" class="pill"></span>
+  <span id="counts" class="pill"></span>
+  <span class="spacer"></span>
+  <button id="theme" class="small" type="button" aria-label="Toggle color theme">Theme</button>
+</header>
+
+<main>
+  <div>
+    <section id="auth">
+      <h2>Token required</h2>
+      <p class="meta">This gateway is protected. Enter the value of AGENTIC_TOKEN.</p>
+      <input id="token" type="password" autocomplete="off" aria-label="Gateway token">
+      <div class="row"><button class="primary" id="save-token" type="button">Connect</button></div>
+    </section>
+
+    <section>
+      <h2>New mission</h2>
+      <textarea id="goal" placeholder="Describe a goal. Example: research the three best open-source vector databases and write a comparison to reports/vector-dbs.md" aria-label="Goal"></textarea>
+      <div class="row">
+        <select id="mode" aria-label="Mode">
+          <option value="swarm">Swarm (multi-head)</option>
+          <option value="agent">Single head</option>
+        </select>
+        <select id="head" aria-label="Head"></select>
+      </div>
+      <div class="row">
+        <label class="meta" style="display:flex;align-items:center;gap:6px;flex:none">
+          <input id="critic" type="checkbox" checked style="width:auto"> Critic review
+        </label>
+        <button class="primary" id="launch" type="button">Launch</button>
+      </div>
+    </section>
+
+    <section>
+      <h2>Runs</h2>
+      <ul class="list" id="runs"></ul>
+    </section>
+  </div>
+
+  <div>
+    <section>
+      <h2>Run <span id="run-id" class="tag"></span> <span class="spacer"></span>
+        <button id="cancel" class="small bad" type="button" hidden>Cancel</button></h2>
+      <div id="run-goal" class="meta"></div>
+      <div class="timeline" id="timeline"><p class="empty">Launch a mission or pick a run.</p></div>
+    </section>
+    <section>
+      <h2>Result</h2>
+      <div id="result" class="output"><span class="empty">No result yet.</span></div>
+    </section>
+  </div>
+
+  <div>
+    <section>
+      <h2>Approvals</h2>
+      <div id="approvals"><p class="empty">Nothing waiting.</p></div>
+    </section>
+    <section>
+      <h2>Schedules</h2>
+      <ul class="list" id="schedules"></ul>
+      <textarea id="sched-goal" placeholder="Goal to run on a schedule" aria-label="Scheduled goal" style="min-height:60px;margin-top:8px"></textarea>
+      <div class="row">
+        <input id="sched-when" placeholder="every 60 or cron: 0 9 * * 1-5" aria-label="Interval minutes or cron">
+        <button id="sched-add" type="button">Add</button>
+      </div>
+    </section>
+    <section>
+      <h2>Memory</h2>
+      <div class="row" style="margin-top:0">
+        <input id="mem-text" placeholder="Remember something" aria-label="Memory text">
+        <button id="mem-add" type="button" style="flex:none">Save</button>
+      </div>
+      <ul class="list" id="memories" style="margin-top:8px"></ul>
+    </section>
+  </div>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+let token = '';
+try { token = sessionStorage.getItem('agentic-token') || ''; } catch (_) {}
+let selected = null;
+let stream = null;
+
+function el(tag, cls, text) {
+  const node = document.createElement(tag);
+  if (cls) node.className = cls;
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
+
+async function api(path, options = {}) {
+  const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
+  if (token) headers.Authorization = `Bearer ${token}`;
+  const response = await fetch(path, { ...options, headers });
+  if (response.status === 401) { $('auth').style.display = 'block'; throw new Error('unauthorized'); }
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw new Error(body.detail || response.statusText);
+  }
+  return response.json();
+}
+
+function fmtTime(ts) { return ts ? new Date(ts * 1000).toLocaleString() : ''; }
+
+async function loadStatus() {
+  const s = await api('/api/status');
+  $('model').textContent = `${s.provider} · ${s.model}`;
+  $('counts').textContent = `${s.heads} heads · ${s.tools} tools` +
+    (s.mcp_servers.length ? ` · MCP: ${s.mcp_servers.join(', ')}` : '') +
+    (s.telegram !== 'disabled' ? ` · telegram ${s.telegram}` : '');
+}
+
+async function loadHeads() {
+  const heads = await api('/api/heads');
+  const select = $('head');
+  select.replaceChildren();
+  for (const h of heads.filter((x) => !['planner', 'critic', 'synthesizer'].includes(x.name))) {
+    const option = el('option', '', h.name);
+    option.value = h.name;
+    option.title = h.description;
+    if (h.name === 'assistant') option.selected = true;
+    select.append(option);
+  }
+}
+
+async function loadRuns() {
+  const runs = await api('/api/runs');
+  const list = $('runs');
+  list.replaceChildren();
+  if (!runs.length) list.append(el('li', 'empty', 'No runs yet.'));
+  for (const run of runs) {
+    const item = el('li');
+    if (run.id === selected) item.classList.add('active');
+    const title = el('div', 'goal');
+    title.append(el('span', `status-dot ${run.status}`), document.createTextNode(run.goal));
+    item.append(title, el('div', 'meta', `${run.mode} · ${run.origin} · ${fmtTime(run.created_at)}`));
+    item.onclick = () => selectRun(run.id);
+    list.append(item);
+  }
+}
+
+function renderEvent(e) {
+  const d = e.data || {};
+  const box = el('div', 'ev');
+  const who = e.agent ? `${e.agent}: ` : '';
+  const line = (text) => box.append(el('div', 'head', who + text));
+  const pre = (text) => { if (text) box.append(el('pre', '', typeof text === 'string' ? text : JSON.stringify(text, null, 2))); };
+  switch (e.type) {
+    case 'run.start': line(`Run started (${d.mode})`); break;
+    case 'swarm.plan':
+      box.classList.add('plan'); line(`Plan with ${d.tasks.length} task(s)`);
+      for (const t of d.tasks) {
+        box.append(el('div', 'plan-task',
+          `${t.id} → ${t.head}${t.depends_on.length ? ` (after ${t.depends_on.join(', ')})` : ''}: ${t.task}`));
+      }
+      break;
+    case 'swarm.plan_invalid': box.classList.add('badev'); line(`Plan rejected: ${d.error}`); break;
+    case 'task.start': line(`${d.revision ? 'Revising' : 'Starting'} ${d.task_id}`); break;
+    case 'task.finish': box.classList.add(d.ok ? 'good' : 'badev'); line(`Finished ${d.task_id}`); pre(d.output); break;
+    case 'head.start': line(`thinking with ${d.model}`); break;
+    case 'head.thought': line('note'); pre(d.text); break;
+    case 'tool.call': box.classList.add('tool'); line(`→ ${d.tool}`); pre(d.args); break;
+    case 'tool.result': box.classList.add(d.ok ? 'tool' : 'badev'); line(`← ${d.tool} ${d.ok ? 'ok' : 'error'}`); pre(d.output); break;
+    case 'head.finish': box.classList.add(d.ok ? 'good' : 'badev'); line(`done in ${d.steps} step(s)`); break;
+    case 'head.error': box.classList.add('badev'); line('model error'); pre(d.error); break;
+    case 'critic.verdict': box.classList.add(d.approved ? 'good' : 'badev'); line(d.approved ? 'approved' : `requested changes: ${d.redo.join(', ')}`); pre(d.feedback); break;
+    case 'swarm.revision': box.classList.add('plan'); line(`Revision round ${d.round}`); break;
+    case 'approval.requested': box.classList.add('plan'); line(`needs approval: ${d.tool}`); break;
+    case 'approval.resolved': line(`approval ${d.approved ? 'granted' : 'declined'}`); break;
+    case 'run.finish': box.classList.add(d.ok ? 'good' : 'badev'); line(`Run ${d.status}`); break;
+    default: line(e.type); pre(d);
+  }
+  return box;
+}
+
+async function selectRun(id) {
+  selected = id;
+  const run = await api(`/api/runs/${id}`);
+  $('run-id').textContent = id;
+  $('run-goal').textContent = run.goal;
+  $('cancel').hidden = run.status !== 'running';
+  const timeline = $('timeline');
+  timeline.replaceChildren(...run.events.map(renderEvent));
+  $('result').textContent = run.result || (run.status === 'running' ? 'Working…' : 'No result.');
+  loadRuns();
+}
+
+function onEvent(e) {
+  if (e.type.startsWith('approval.')) loadApprovals();
+  if (e.type === 'run.start' || e.type === 'run.finish') loadRuns();
+  if (e.run_id !== selected) return;
+  const timeline = $('timeline');
+  if (timeline.querySelector('.empty')) timeline.replaceChildren();
+  timeline.append(renderEvent(e));
+  if (e.type === 'run.finish') { $('result').textContent = e.data.output; $('cancel').hidden = true; }
+}
+
+function connectStream() {
+  if (stream) stream.close();
+  stream = new EventSource('/api/stream' + (token ? `?token=${encodeURIComponent(token)}` : ''));
+  stream.onopen = () => { $('conn').textContent = 'live'; $('conn').className = 'pill ok'; };
+  stream.onerror = () => { $('conn').textContent = 'reconnecting'; $('conn').className = 'pill bad'; };
+  stream.onmessage = (m) => onEvent(JSON.parse(m.data));
+}
+
+async function loadApprovals() {
+  const items = await api('/api/approvals');
+  const box = $('approvals');
+  box.replaceChildren();
+  if (!items.length) { box.append(el('p', 'empty', 'Nothing waiting.')); return; }
+  for (const a of items) {
+    const card = el('div', 'approval');
+    card.append(el('div', 'head', `${a.agent} → ${a.tool}`), el('div', 'meta', `${a.permission} · run ${a.run_id}`));
+    card.append(el('pre', 'output', JSON.stringify(a.args, null, 2)));
+    const row = el('div', 'row');
+    const yes = el('button', 'small ok', 'Approve');
+    const always = el('button', 'small', 'Approve for run');
+    const no = el('button', 'small bad', 'Deny');
+    const decide = (approve, remember) => api(`/api/approvals/${a.id}`, {
+      method: 'POST', body: JSON.stringify({ approve, remember_for_run: remember }) }).then(loadApprovals);
+    yes.onclick = () => decide(true, false);
+    always.onclick = () => decide(true, true);
+    no.onclick = () => decide(false, false);
+    row.append(yes, always, no);
+    card.append(row);
+    box.append(card);
+  }
+}
+
+async function loadSchedules() {
+  const items = await api('/api/schedules');
+  const list = $('schedules');
+  list.replaceChildren();
+  if (!items.length) list.append(el('li', 'empty', 'No schedules.'));
+  for (const s of items) {
+    const item = el('li');
+    const when = s.interval_seconds ? `every ${Math.round(s.interval_seconds / 60)} min` : `cron ${s.cron}`;
+    item.append(el('div', 'goal', s.name), el('div', 'meta', `${when} · next ${fmtTime(s.next_run)}${s.last_status ? ' · last ' + s.last_status : ''}`));
+    const remove = el('button', 'small bad', 'Remove');
+    remove.onclick = (ev) => { ev.stopPropagation(); api(`/api/schedules/${s.id}`, { method: 'DELETE' }).then(loadSchedules); };
+    item.append(remove);
+    list.append(item);
+  }
+}
+
+async function loadMemories() {
+  const items = await api('/api/memories');
+  const list = $('memories');
+  list.replaceChildren();
+  if (!items.length) list.append(el('li', 'empty', 'No memories yet.'));
+  for (const m of items) {
+    const item = el('li', '', m.text);
+    item.title = 'Click to delete';
+    item.onclick = () => { if (confirm('Delete this memory?')) api(`/api/memories/${m.id}`, { method: 'DELETE' }).then(loadMemories); };
+    list.append(item);
+  }
+}
+
+$('launch').onclick = async () => {
+  const goal = $('goal').value.trim();
+  if (!goal) return $('goal').focus();
+  const { run_id } = await api('/api/runs', { method: 'POST', body: JSON.stringify({
+    goal, mode: $('mode').value, head: $('head').value, critic: $('critic').checked }) });
+  $('goal').value = '';
+  await selectRun(run_id);
+};
+$('goal').addEventListener('keydown', (e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) $('launch').click(); });
+$('mode').onchange = () => { $('head').disabled = $('mode').value === 'swarm'; };
+$('head').disabled = true;
+$('cancel').onclick = () => selected && api(`/api/runs/${selected}/cancel`, { method: 'POST' });
+$('sched-add').onclick = async () => {
+  const goal = $('sched-goal').value.trim();
+  const when = $('sched-when').value.trim();
+  if (!goal || !when) return;
+  const minutes = when.replace(/^every\s+/i, '');
+  const body = /^\d+$/.test(minutes) ? { goal, every_minutes: Number(minutes) } : { goal, cron: when.replace(/^cron:\s*/i, '') };
+  try { await api('/api/schedules', { method: 'POST', body: JSON.stringify(body) }); }
+  catch (err) { alert(err.message); return; }
+  $('sched-goal').value = ''; $('sched-when').value = '';
+  loadSchedules();
+};
+$('mem-add').onclick = async () => {
+  const text = $('mem-text').value.trim();
+  if (!text) return;
+  await api('/api/memories', { method: 'POST', body: JSON.stringify({ text }) });
+  $('mem-text').value = '';
+  loadMemories();
+};
+$('save-token').onclick = () => {
+  token = $('token').value.trim();
+  try { sessionStorage.setItem('agentic-token', token); } catch (_) {}
+  $('auth').style.display = 'none';
+  boot();
+};
+$('theme').onclick = () => {
+  const root = document.documentElement;
+  const dark = root.dataset.theme ? root.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+  root.dataset.theme = dark ? 'light' : 'dark';
+};
+
+async function boot() {
+  try {
+    await Promise.all([loadStatus(), loadHeads(), loadRuns(), loadApprovals(), loadSchedules(), loadMemories()]);
+    connectStream();
+  } catch (err) {
+    $('conn').textContent = err.message === 'unauthorized' ? 'token needed' : 'offline';
+    $('conn').className = 'pill bad';
+  }
+}
+boot();
+</script>
+</body>
+</html>

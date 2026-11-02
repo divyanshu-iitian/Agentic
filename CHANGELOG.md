@@ -2,6 +2,43 @@
 
 All notable changes are recorded here. Agentic follows semantic versioning.
 
+## [0.2.0] - 2026-11-03
+
+### Added
+
+- `agentic` package and CLI (`agentic init|doctor|chat|run|swarm|serve|heads|tools|runs|schedule|memory`)
+- multi-head swarms: a planner builds a task graph, specialist heads run independent tasks
+  in parallel, a critic can send tasks back for revision, and a synthesizer writes the answer
+- nine built-in heads defined as Markdown profiles; custom heads in `heads/` add to or
+  override them, and each head can use its own provider and model
+- providers: Ollama, any OpenAI-compatible API, and Anthropic, plus a prompt-based tool mode
+  for small models without native tool calling
+- 20 built-in tools: workspace files, regex search, shell, Python, web search, page fetch,
+  headless browser, desktop control with OCR, memory, scheduling, and delegation
+- MCP client over stdio; server tools are registered as `mcp__<server>__<tool>`
+- approval policy per permission tier (`auto`, `ask`, `deny`) with terminal, dashboard, and
+  Telegram approvers, plus a stricter policy for unattended scheduled runs
+- SQLite store with FTS5 memory search, run history, a full event log, chat sessions, and
+  schedules
+- interval and cron schedules executed by the gateway
+- gateway with the Mission Control dashboard, REST API, and a Server-Sent Events stream
+- Telegram channel with long polling, allow-listed chats, and in-chat approvals
+- 90 new tests covering the runtime; CI on Linux and Windows with Python 3.10 and 3.12
+
+### Changed
+
+- the skill registry moved to `agentic/skills.py`; `core/skills.py` re-exports it
+- `pyproject.toml` now packages the project and installs the `agentic` command
+
+### Security
+
+- file tools refuse any path outside the workspace, including through `..` or symlinks
+- web tools refuse loopback, private, link-local, and metadata addresses, including after
+  redirects and for browser subresources
+- a guard refuses known destructive shell commands even when they are approved
+- the gateway rejects cross-origin requests and unexpected `Host` headers, and will not bind
+  to a public interface unless a token is set
+
 ## [0.1.0] - 2026-07-24
 
 ### Added
@@ -28,4 +65,5 @@ All notable changes are recorded here. Agentic follows semantic versioning.
   are rejected before execution
 - exceptions are logged locally without exposing raw server details to clients
 
+[0.2.0]: https://github.com/divyanshu-iitian/Agentic/releases/tag/v0.2.0
 [0.1.0]: https://github.com/divyanshu-iitian/Agentic/releases/tag/v0.1.0
