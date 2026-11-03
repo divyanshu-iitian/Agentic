@@ -10,7 +10,7 @@ def test_version(capsys) -> None:
     with pytest.raises(SystemExit) as exit_info:
         main(["--version"])
     assert exit_info.value.code == 0
-    assert "agentic 0.2.0" in capsys.readouterr().out
+    assert "agentic 0.3.0" in capsys.readouterr().out
 
 
 def test_init_heads_memory_and_schedule(tmp_path, monkeypatch, capsys) -> None:

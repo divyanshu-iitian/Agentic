@@ -19,7 +19,8 @@ from typing import Any
 
 from agentic import __version__
 from agentic.config import MCPServerConfig
-from agentic.tools.base import Tool, ToolContext, ToolError
+from agentic.llm.base import ImagePart
+from agentic.tools.base import Tool, ToolContext, ToolError, ToolOutput
 
 PROTOCOL_VERSION = "2025-06-18"
 SAFE_NAME = re.compile(r"[^a-zA-Z0-9_-]")
@@ -112,12 +113,16 @@ class MCPClient:
             if not cursor:
                 return tools
 
-    def call_tool(self, name: str, arguments: dict[str, Any]) -> str:
+    def call_tool(self, name: str, arguments: dict[str, Any]) -> str | ToolOutput:
         result = self.request("tools/call", {"name": name, "arguments": arguments})
-        parts = []
+        parts: list[str] = []
+        images: list[ImagePart] = []
         for block in result.get("content", []):
             if block.get("type") == "text":
                 parts.append(block.get("text", ""))
+            elif block.get("type") == "image" and block.get("data"):
+                images.append(ImagePart(block["data"], block.get("mimeType") or "image/png"))
+                parts.append("[image attached]")
             elif block.get("type") == "resource":
                 parts.append(json.dumps(block.get("resource", {}))[:4000])
             else:
@@ -127,7 +132,7 @@ class MCPClient:
         text = "\n".join(parts) or "(no content)"
         if result.get("isError"):
             raise ToolError(text)
-        return text
+        return ToolOutput(text, images) if images else text
 
     def close(self) -> None:
         if self.process and self.process.poll() is None:
@@ -151,7 +156,9 @@ def mcp_tools(client: MCPClient) -> list[Tool]:
             "required": parameters.get("required", []),
         }
 
-        def handler(args: dict[str, Any], ctx: ToolContext, _remote=remote_name) -> str:
+        def handler(
+            args: dict[str, Any], ctx: ToolContext, _remote=remote_name
+        ) -> str | ToolOutput:
             return client.call_tool(_remote, args)
 
         tools.append(

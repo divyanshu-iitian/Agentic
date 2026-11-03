@@ -17,12 +17,21 @@ class ToolCall:
 
 
 @dataclass
+class ImagePart:
+    """A base64-encoded image attached to a message (screenshots, MCP images)."""
+
+    data: str
+    media_type: str = "image/png"
+
+
+@dataclass
 class Message:
     role: Role
     content: str = ""
     tool_calls: list[ToolCall] = field(default_factory=list)
     tool_call_id: str | None = None
     name: str | None = None
+    images: list[ImagePart] = field(default_factory=list)
 
 
 @dataclass

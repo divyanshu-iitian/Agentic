@@ -81,6 +81,40 @@ Approvers:
   dashboard and Telegram resolve them.
 - **None attached:** `ask` means deny.
 
+## Computer use
+
+`agentic/tools/desktop.py` gives heads eyes and hands.
+
+- **Eyes.** `desktop_ui_tree` walks the Windows UI Automation tree of a window.
+  It keeps named and interactive elements, numbers them, and caches their
+  rectangles on the runtime so `desktop_click_element`, `desktop_type`,
+  `desktop_draw`, and `desktop_screenshot` can target them by id.
+  `desktop_screenshot` downscales the screen, overlays a grid labeled in screen
+  coordinates, and returns the image as a `ToolOutput`.
+- **Images in the loop.** When a tool returns images and the head's model
+  supports vision, the head adds them to the conversation in a user message
+  after the tool results. Every provider can carry images that way. Only the
+  newest two images stay in context.
+- **Vision detection.** `ProviderConfig.vision` can be true, false, or unset
+  (auto). For Ollama, auto asks `/api/show` for the model's capabilities.
+  Anthropic models are assumed to see. Tools marked `requires_vision` are hidden
+  from models that cannot.
+- **Hands.** Clicks and keys go through pyautogui. Strokes (`desktop_drag`,
+  `desktop_draw`) are densified to steps of 6 px or less and sent with
+  `mouse_event` on Windows, because modern apps ignore `SetCursorPos` jumps
+  while a button is held. Windows are focused with `AttachThreadInput` and
+  `SetForegroundWindow` instead of a synthetic Alt press.
+- **Stopping.** `Runtime.halt()` sets a reason that every head checks before
+  each step, and that strokes check between points. The pyautogui corner
+  failsafe and the CLI's Ctrl+Alt+Q hotkey both call it.
+
+`agentic/tools/browser.py` keeps one Playwright context per runtime, created
+lazily on the event loop and closed by `Runtime.aclose()`. A snapshot script
+tags visible interactive elements with `data-agentic-ref` numbers. Actions
+locate elements by those numbers, wait for the page to settle, and return a
+fresh snapshot. A context-wide route handler applies the same public-host check
+as `http_fetch` to every request.
+
 ## MCP
 
 `agentic/tools/mcp.py` is a stdio JSON-RPC client. It performs the `initialize`

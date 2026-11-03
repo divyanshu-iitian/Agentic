@@ -14,6 +14,7 @@ TOOLS = [
         },
     },
     {"name": "explode", "description": "Always fails.", "inputSchema": {"type": "object"}},
+    {"name": "snap", "description": "Returns an image.", "inputSchema": {"type": "object"}},
 ]
 
 
@@ -45,5 +46,8 @@ for line in sys.stdin:
             reply(
                 message["id"], {"content": [{"type": "text", "text": params["arguments"]["text"]}]}
             )
+        elif params["name"] == "snap":
+            image = {"type": "image", "data": "iVBORw0KGgo=", "mimeType": "image/png"}
+            reply(message["id"], {"content": [{"type": "text", "text": "shot"}, image]})
         else:
             reply(message["id"], {"content": [{"type": "text", "text": "boom"}], "isError": True})

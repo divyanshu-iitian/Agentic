@@ -15,7 +15,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 
 from agentic.heads import HeadProfile
-from agentic.llm.base import Message, ProviderError
+from agentic.llm.base import ImagePart, Message, ProviderError
 from agentic.tools.base import ToolContext
 
 if TYPE_CHECKING:
@@ -23,6 +23,8 @@ if TYPE_CHECKING:
 
 MAX_CONTEXT_CHARS_PER_DEP = 6_000
 REPEAT_LIMIT = 3
+# Screenshots are large; only the most recent ones stay in the conversation.
+KEEP_IMAGES = 2
 EMPTY_ANSWER_NUDGE = "Your last reply was empty. Reply now with your final answer as plain text."
 
 
@@ -75,6 +77,14 @@ def build_system_prompt(
     return "\n\n".join(sections)
 
 
+def prune_images(messages: list[Message], keep: int) -> None:
+    """Drop images from all but the newest `keep` image-bearing messages."""
+    with_images = [message for message in messages if message.images]
+    for message in with_images[: max(0, len(with_images) - keep)]:
+        message.images = []
+        message.content += " [older image removed to save context]"
+
+
 class Head:
     def __init__(self, runtime: Runtime, profile: HeadProfile):
         self.runtime = runtime
@@ -96,6 +106,9 @@ class Head:
         tools = runtime.tools.select(list(profile.tools))
         if depth >= limits.max_delegation_depth:
             tools = [tool for tool in tools if tool.name != "delegate"]
+        vision = runtime.supports_vision(profile)
+        if not vision:
+            tools = [tool for tool in tools if not tool.requires_vision]
         allowed = {tool.name for tool in tools}
         specs = [tool.spec() for tool in tools] or None
 
@@ -116,12 +129,17 @@ class Head:
             model=f"{self.provider.name}:{self.provider.model}",
         )
         ctx = ToolContext(runtime, run_id, profile.name, origin, depth)
-        seen: dict[str, int] = {}
+        last_signature, repeats = "", 0
         nudged = False
         max_steps = profile.max_steps or limits.max_steps
 
         for step in range(1, max_steps + 1):
             result.steps = step
+            if runtime.halt_reason:
+                result.output = f"Stopped: {runtime.halt_reason}"
+                bus.emit("head.error", run_id, profile.name, error=result.output)
+                return result
+            prune_images(messages, KEEP_IMAGES)
             try:
                 completion = await asyncio.to_thread(
                     self.provider.complete, messages, specs, profile.temperature
@@ -159,14 +177,17 @@ class Head:
 
             if reply.content:
                 bus.emit("head.thought", run_id, profile.name, text=reply.content[:2000])
+            step_images: list[tuple[str, list[ImagePart]]] = []
             for call in reply.tool_calls:
                 result.tool_calls += 1
                 signature = f"{call.name}:{json.dumps(call.arguments, sort_keys=True, default=str)}"
-                seen[signature] = seen.get(signature, 0) + 1
+                # Only back-to-back identical calls count: observe, act, observe is normal.
+                repeats = repeats + 1 if signature == last_signature else 1
+                last_signature = signature
                 bus.emit("tool.call", run_id, profile.name, tool=call.name, args=call.arguments)
-                if seen[signature] > REPEAT_LIMIT:
+                if repeats > REPEAT_LIMIT:
                     content = (
-                        f"Skipped: identical {call.name} call repeated {seen[signature]} times. "
+                        f"Skipped: identical {call.name} call repeated {repeats} times in a row. "
                         "Change approach or give your final answer."
                     )
                     ok = False
@@ -181,6 +202,8 @@ class Head:
                         allowed=allowed,
                     )
                     content, ok = outcome.content, outcome.ok
+                    if outcome.images and vision:
+                        step_images.append((call.name, outcome.images))
                 bus.emit(
                     "tool.result",
                     run_id,
@@ -188,6 +211,7 @@ class Head:
                     tool=call.name,
                     ok=ok,
                     output=content[:2000],
+                    images=sum(len(images) for name, images in step_images if name == call.name),
                 )
                 messages.append(
                     Message(
@@ -195,6 +219,15 @@ class Head:
                         content if ok else f"ERROR: {content}",
                         tool_call_id=call.id,
                         name=call.name,
+                    )
+                )
+            if step_images:
+                names = ", ".join(dict.fromkeys(name for name, _ in step_images))
+                messages.append(
+                    Message(
+                        "user",
+                        f"Image(s) returned by {names}. Look carefully before your next action.",
+                        images=[image for _, images in step_images for image in images],
                     )
                 )
 

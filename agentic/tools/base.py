@@ -19,12 +19,12 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from agentic.approvals import ApprovalGate, ApprovalRequest
-from agentic.llm.base import ToolSpec
+from agentic.llm.base import ImagePart, ToolSpec
 
 if TYPE_CHECKING:
     from agentic.runtime import Runtime
 
-PERMISSIONS = ("read", "memory", "network", "write", "execute", "schedule", "desktop")
+PERMISSIONS = ("read", "memory", "network", "write", "execute", "schedule", "desktop", "browser")
 Handler = Callable[[dict[str, Any], "ToolContext"], Awaitable[str] | str]
 
 
@@ -43,6 +43,8 @@ class Tool:
     blocking: bool = True
     # Overrides limits.tool_timeout for tools that enforce their own limit.
     timeout: float | None = None
+    # Only offered to heads whose model can see images.
+    requires_vision: bool = False
 
     def __post_init__(self) -> None:
         if self.permission not in PERMISSIONS:
@@ -71,6 +73,15 @@ class ToolResult:
     ok: bool
     content: str
     duration: float = 0.0
+    images: list[ImagePart] = field(default_factory=list)
+
+
+@dataclass
+class ToolOutput:
+    """What a handler returns when it has images (for example a screenshot)."""
+
+    text: str
+    images: list[ImagePart] = field(default_factory=list)
 
 
 def schema(properties: dict[str, Any], required: list[str] | None = None) -> dict[str, Any]:
@@ -176,6 +187,7 @@ class ToolRegistry:
         allowed: set[str] | None = None,
     ) -> ToolResult:
         started = time.perf_counter()
+        images: list[ImagePart] = []
         tool = self._tools.get(name)
         if tool is None or (allowed is not None and name not in allowed):
             available = ", ".join(sorted(allowed or self._tools)) or "none"
@@ -198,7 +210,12 @@ class ToolRegistry:
                 outcome = tool.handler(cleaned, ctx)
             if inspect.isawaitable(outcome):
                 outcome = await asyncio.wait_for(outcome, tool.timeout or timeout)
-            content = outcome if isinstance(outcome, str) else json.dumps(outcome, default=str)
+            if isinstance(outcome, ToolOutput):
+                content, images = outcome.text, outcome.images
+            elif isinstance(outcome, str):
+                content = outcome
+            else:
+                content = json.dumps(outcome, default=str)
             ok = True
         except asyncio.TimeoutError:
             content, ok = f"{name} timed out after {tool.timeout or timeout:.0f}s", False
@@ -206,4 +223,9 @@ class ToolRegistry:
             content, ok = str(exc), False
         except Exception as exc:  # report, never crash the head
             content, ok = f"{name} failed: {type(exc).__name__}: {exc}", False
-        return ToolResult(ok, truncate(content, output_limit), time.perf_counter() - started)
+        return ToolResult(
+            ok,
+            truncate(content, output_limit),
+            time.perf_counter() - started,
+            images if ok else [],
+        )

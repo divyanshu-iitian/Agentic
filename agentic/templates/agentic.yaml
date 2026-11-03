@@ -9,7 +9,9 @@ providers:
     model: qwen2.5:3b             # 8 GB RAM friendly; try qwen2.5:7b or llama3.1:8b on 16 GB
     base_url: http://127.0.0.1:11434
     tool_mode: native             # use "prompt" if a small model ignores native tool calls
-    context_window: 8192
+    context_window: 16384
+    # vision: true                # auto-detected for Ollama; vision models (qwen3.5, qwen2.5vl,
+                                  # gemma3, llava) can look at screenshots
   # Any OpenAI-compatible API (OpenAI, Groq, OpenRouter, LM Studio, vLLM, ...):
   # groq:
   #   type: openai
@@ -34,7 +36,8 @@ permissions:
   write: ask
   execute: ask
   schedule: ask
-  desktop: ask
+  desktop: ask                    # see the screen, mouse, keyboard, apps
+  browser: ask                    # click/type/submit on websites (reading pages is "network")
 
 limits:
   max_steps: 12                   # tool-calling steps per head
@@ -51,11 +54,22 @@ network:
   allow_private_hosts: false      # keep false unless you trust every page the agent reads
 
 # Model Context Protocol servers; their tools appear as mcp__<server>__<tool>.
+# Any MCP server becomes extra "hands" for every head whose tools match.
 mcp_servers: {}
   # filesystem:
   #   command: npx
   #   args: ["-y", "@modelcontextprotocol/server-filesystem", "./workspace"]
   #   permission: write
+  # playwright:                   # Microsoft's browser automation server
+  #   command: npx
+  #   args: ["-y", "@playwright/mcp@latest"]
+  #   permission: browser
+
+computer:
+  screenshot_width: 1280          # screenshots are downscaled before a vision model sees them
+  screenshot_grid: true           # labeled coordinate grid helps models aim clicks
+  browser_headless: false         # watch the agent's browser work
+  browser_persistent_profile: true  # keep cookies and logins in .agentic/browser-profile
 
 gateway:
   host: 127.0.0.1

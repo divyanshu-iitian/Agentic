@@ -30,6 +30,8 @@ log = logging.getLogger("agentic.runtime")
 CHAT_HELP = """Commands:
 /swarm <goal>   run the full multi-head team on a goal
 /run <goal>     run the assistant head as a one-off task
+/computer <x>   hand a task to the operator head (desktop apps, mouse, drawing)
+/browse <x>     hand a task to the navigator head (websites in a real browser)
 /remember <x>   save a long-term memory
 /memories       list recent memories
 /schedules      list scheduled automations
@@ -76,6 +78,12 @@ class Runtime:
         self._providers: dict[str, Provider] = {}
         self.mcp_clients: list[MCPClient] = []
         self.mcp_errors: dict[str, str] = {}
+        self._vision: dict[str, bool] = {}
+        # Set by the emergency stop (mouse in a screen corner, Ctrl+Alt+Q).
+        self.halt_reason: str | None = None
+        # Last accessibility-tree snapshot: element id -> screen rectangle.
+        self.desktop_elements: dict[int, tuple[int, int, int, int]] = {}
+        self._browser = None
 
     # Providers ------------------------------------------------------------
 
@@ -84,6 +92,35 @@ class Runtime:
         if name not in self._providers:
             self._providers[name] = self.provider_factory(name, self.settings.provider(name))
         return self._providers[name]
+
+    def supports_vision(self, profile: HeadProfile) -> bool:
+        name = profile.provider or self.settings.default_provider
+        if name not in self._vision:
+            config = self.settings.provider(name)
+            if config.vision is not None:
+                self._vision[name] = config.vision
+            else:
+                provider = self.provider_for(profile)
+                inner = getattr(provider, "inner", provider)
+                detect = getattr(inner, "supports_vision", None)
+                if callable(detect):
+                    self._vision[name] = bool(detect())
+                else:
+                    self._vision[name] = config.type == "anthropic"
+        return self._vision[name]
+
+    def halt(self, reason: str) -> None:
+        """Emergency stop: every head stops at its next step."""
+        self.halt_reason = reason
+        log.warning("Emergency stop: %s", reason)
+
+    @property
+    def browser(self):
+        if self._browser is None:
+            from agentic.tools.browser import BrowserSession
+
+            self._browser = BrowserSession(self.settings)
+        return self._browser
 
     # MCP ------------------------------------------------------------------
 
@@ -109,6 +146,13 @@ class Runtime:
         for client in self.mcp_clients:
             client.close()
         self.mcp_clients.clear()
+
+    async def aclose(self) -> None:
+        """Close async resources (the browser) on the loop that created them."""
+        if self._browser is not None:
+            await self._browser.close()
+            self._browser = None
+        self.close()
 
     # Runs -----------------------------------------------------------------
 
@@ -146,6 +190,7 @@ class Runtime:
         if head not in self.heads:
             raise KeyError(f"Unknown head {head!r}. Available: {', '.join(sorted(self.heads))}")
         run_id = run_id or self.store.create_run(goal, mode, origin)
+        self.halt_reason = None
         self.bus.emit("run.start", run_id, None, goal=goal, mode=mode, head=head, origin=origin)
         try:
             if mode == "swarm":
@@ -187,12 +232,12 @@ class Runtime:
             if command == "/schedules":
                 rows = self.store.list_schedules()
                 return "\n".join(f"{r['id']}: {r['name']}" for r in rows) or "No schedules."
-            if command in {"/swarm", "/run"} and rest:
-                outcome = await self.run(
-                    rest, mode="swarm" if command == "/swarm" else "agent", origin=origin
-                )
-                return outcome.output
-            if command not in {"/swarm", "/run", "/remember"}:
+            heads = {"/computer": "operator", "/browse": "navigator", "/run": "assistant"}
+            if command in {"/swarm", *heads} and rest:
+                if command == "/swarm":
+                    return (await self.run(rest, mode="swarm", origin=origin)).output
+                return (await self.run(rest, head=heads[command], origin=origin)).output
+            if command not in {"/swarm", "/remember", *heads}:
                 return f"Unknown command {command}.\n\n{CHAT_HELP}"
             return f"Usage: {command} <text>"
 

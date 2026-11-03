@@ -198,3 +198,18 @@ def test_empty_final_answer_gets_one_nudge(make_runtime) -> None:
     stubborn = make_runtime(ScriptedProvider(["", ""]))
     outcome = asyncio.run(stubborn.run("say nothing"))
     assert not outcome.ok and outcome.output == "(the model returned an empty answer)"
+
+
+def test_chat_shortcuts_route_to_specialist_heads(make_runtime) -> None:
+    runtime = make_runtime(ScriptedProvider(["drew it", "browsed it"]))
+    assert asyncio.run(runtime.chat("s", "/computer draw a cat")) == "drew it"
+    assert asyncio.run(runtime.chat("s", "/browse open example.com")) == "browsed it"
+    store = runtime.store
+    heads = [
+        row["agent"]
+        for run in store.list_runs()
+        for row in store.events(run["id"])
+        if row["type"] == "head.start"
+    ]
+    assert sorted(heads) == ["navigator", "operator"]
+    assert "Usage: /computer" in asyncio.run(runtime.chat("s", "/computer"))

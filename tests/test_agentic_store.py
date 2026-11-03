@@ -114,7 +114,10 @@ def test_mcp_client_lists_and_calls_tools() -> None:
         client.start()
         assert client.server_info["name"] == "fake"
         tools = {tool.name: tool for tool in mcp_tools(client)}
-        assert set(tools) == {"mcp__fake__echo", "mcp__fake__explode"}
+        assert set(tools) == {"mcp__fake__echo", "mcp__fake__explode", "mcp__fake__snap"}
+        snap = tools["mcp__fake__snap"].handler({}, None)
+        assert snap.text == "shot\n[image attached]"
+        assert snap.images[0].data == "iVBORw0KGgo="
         echo = tools["mcp__fake__echo"]
         assert echo.permission == "execute" and echo.parameters["required"] == ["text"]
         assert echo.handler({"text": "ping"}, None) == "ping"
@@ -138,4 +141,5 @@ def test_runtime_registers_mcp_tools_and_reports_failures(make_runtime) -> None:
     assert [t.name for t in runtime.tools.select(["mcp__*"])] == [
         "mcp__fake__echo",
         "mcp__fake__explode",
+        "mcp__fake__snap",
     ]

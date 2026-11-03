@@ -2,6 +2,39 @@
 
 All notable changes are recorded here. Agentic follows semantic versioning.
 
+## [0.3.0] - 2026-11-03
+
+### Added
+
+- computer use: 15 desktop tools. Eyes: Windows UI Automation accessibility tree,
+  screenshots with a labeled coordinate grid, OCR, and a window list. Hands: click by element
+  or coordinates, type (including non-ASCII on Windows), hotkeys, move, drag, draw shapes on a
+  0-1000 canvas grid, scroll, wait, and focus/maximize/minimize/restore windows
+- a persistent Playwright browser session with numbered-element snapshots: open, snapshot,
+  click, type, select, press, scroll, back, and screenshot
+- vision: images in messages for Ollama, OpenAI-compatible APIs, and Anthropic; Ollama vision
+  auto-detection; screenshot tools offered only to vision models; old screenshots pruned
+- MCP tool results that contain images are passed to vision models
+- `navigator` head for websites and a rewritten `operator` head with an observe, act, verify loop
+- `drawing` and `computer-use` skills
+- emergency stop: Ctrl+Alt+Q in the CLI, or the mouse in a screen corner, halts every head,
+  even mid-stroke
+- chat shortcuts `/computer` and `/browse`
+- `browser` permission tier for clicking and typing on websites
+- `computer` config section and `doctor` checks for vision and UI Automation
+
+### Changed
+
+- the default context window is now 16,384 tokens so tools and screenshots fit
+- the repeat guard only stops identical calls made back to back
+
+### Fixed
+
+- found by testing in the real Paint app: strokes made with pyautogui cursor jumps were silently
+  ignored, so drawing now sends real `mouse_event` input on Windows
+- bringing a window to the front pressed Alt, which opened ribbon key tips in Paint and Office
+- minimized windows could not be found, so they could not be restored
+
 ## [0.2.0] - 2026-11-03
 
 ### Added
@@ -65,5 +98,6 @@ All notable changes are recorded here. Agentic follows semantic versioning.
   are rejected before execution
 - exceptions are logged locally without exposing raw server details to clients
 
+[0.3.0]: https://github.com/divyanshu-iitian/Agentic/releases/tag/v0.3.0
 [0.2.0]: https://github.com/divyanshu-iitian/Agentic/releases/tag/v0.2.0
 [0.1.0]: https://github.com/divyanshu-iitian/Agentic/releases/tag/v0.1.0

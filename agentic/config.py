@@ -29,11 +29,14 @@ class ProviderConfig(StrictModel):
     api_key_env: str | None = None
     temperature: float = Field(default=0.2, ge=0, le=2)
     max_tokens: int = Field(default=1024, ge=64, le=64_000)
-    context_window: int = Field(default=8192, ge=2048, le=1_000_000)
+    context_window: int = Field(default=16_384, ge=2048, le=1_000_000)
     timeout: int = Field(default=180, ge=5, le=1800)
     # "native" uses the provider's tool-calling API. "prompt" describes tools in
     # the system prompt and parses JSON, which helps small local models.
     tool_mode: Literal["native", "prompt"] = "native"
+    # Whether the model accepts images. None = auto: Ollama is asked about the
+    # model, Anthropic models are assumed to see, other APIs are assumed not to.
+    vision: bool | None = None
 
     def api_key(self) -> str | None:
         return os.getenv(self.api_key_env) if self.api_key_env else None
@@ -47,6 +50,7 @@ class PermissionPolicy(StrictModel):
     execute: PolicyValue = "ask"
     schedule: PolicyValue = "ask"
     desktop: PolicyValue = "ask"
+    browser: PolicyValue = "ask"
 
 
 class LimitsConfig(StrictModel):
@@ -71,8 +75,20 @@ class MCPServerConfig(StrictModel):
     command: str
     args: list[str] = Field(default_factory=list)
     env: dict[str, str] = Field(default_factory=dict)
-    permission: Literal["read", "memory", "network", "write", "execute", "desktop"] = "execute"
+    permission: Literal["read", "memory", "network", "write", "execute", "desktop", "browser"] = (
+        "execute"
+    )
     enabled: bool = True
+
+
+class ComputerConfig(StrictModel):
+    # Screenshots are downscaled to this width before a vision model sees them.
+    screenshot_width: int = Field(default=1280, ge=320, le=3840)
+    # Draw a labeled coordinate grid on screenshots so models can aim clicks.
+    screenshot_grid: bool = True
+    browser_headless: bool = False
+    # Keep cookies and logins between runs in <data_dir>/browser-profile.
+    browser_persistent_profile: bool = True
 
 
 class GatewayConfig(StrictModel):
@@ -112,6 +128,7 @@ class Settings(StrictModel):
     limits: LimitsConfig = Field(default_factory=LimitsConfig)
     network: NetworkConfig = Field(default_factory=NetworkConfig)
     mcp_servers: dict[str, MCPServerConfig] = Field(default_factory=dict)
+    computer: ComputerConfig = Field(default_factory=ComputerConfig)
     gateway: GatewayConfig = Field(default_factory=GatewayConfig)
     channels: ChannelsConfig = Field(default_factory=ChannelsConfig)
     scheduler: SchedulerConfig = Field(default_factory=SchedulerConfig)

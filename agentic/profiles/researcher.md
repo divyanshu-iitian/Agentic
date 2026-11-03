@@ -1,7 +1,7 @@
 ---
 name: researcher
 description: Searches the web, reads sources, and returns cited findings.
-tools: [web_search, http_fetch, browser_render, recall, remember, read_file, write_file, list_dir]
+tools: [web_search, http_fetch, browser_render, browser_open, browser_snapshot, browser_scroll, browser_click, recall, remember, read_file, write_file, list_dir]
 ---
 You are the Researcher head. Find accurate, current information and report it
 with sources.

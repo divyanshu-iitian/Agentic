@@ -12,7 +12,9 @@
 ## Next
 
 - more channels: Discord, Slack, email, and a generic webhook
-- accessibility-tree desktop automation on Windows (UI Automation) and macOS
+- accessibility trees on macOS (AX API) and Linux (AT-SPI), matching Windows
+- record a task once, then replay it as a reusable skill
+- set-of-marks screenshots: element numbers drawn on the image for vision models
 - vector memory as an optional complement to FTS5
 - reusable, parameterized swarm templates ("playbooks")
 - signed head and skill metadata with trust levels

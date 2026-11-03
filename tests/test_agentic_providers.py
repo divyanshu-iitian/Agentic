@@ -150,7 +150,7 @@ def test_ollama_parses_dict_arguments(monkeypatch) -> None:
 
     assert sent["url"] == "http://127.0.0.1:11434/api/chat"
     assert sent["body"]["messages"][3]["tool_name"] == "read_file"
-    assert sent["body"]["options"]["num_ctx"] == 8192
+    assert sent["body"]["options"]["num_ctx"] == 16_384
     assert completion.message.tool_calls[0].arguments == {"path": "e"}
     assert completion.usage == {"input_tokens": 7, "output_tokens": 2}
 

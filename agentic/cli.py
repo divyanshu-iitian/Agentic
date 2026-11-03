@@ -19,7 +19,7 @@ from agentic.config import CONFIG_FILENAME, Settings, load_settings
 from agentic.events import Event
 
 TEMPLATE = Path(__file__).resolve().parent / "templates" / "agentic.yaml"
-PERMISSIONS = ("read", "memory", "network", "write", "execute", "schedule", "desktop")
+PERMISSIONS = ("read", "memory", "network", "write", "execute", "schedule", "desktop", "browser")
 
 
 class Style:
@@ -162,14 +162,28 @@ def _runtime(args, interactive: bool = True):
     return runtime
 
 
+def _install_kill_switch(runtime) -> None:
+    """Ctrl+Alt+Q stops every head, even mid-drawing (needs the keyboard package)."""
+    try:
+        import keyboard
+    except Exception:
+        return
+    try:
+        keyboard.add_hotkey("ctrl+alt+q", lambda: runtime.halt("Ctrl+Alt+Q pressed"))
+    except Exception:  # Linux without root, Wayland, and similar
+        return
+    print(dim("Emergency stop: Ctrl+Alt+Q, or move the mouse into a screen corner."))
+
+
 async def _with_mcp(runtime, coro_factory):
     await runtime.start_mcp()
     for name, error in runtime.mcp_errors.items():
         print(color("yellow", f"MCP server {name} unavailable: {error}"))
+    _install_kill_switch(runtime)
     try:
         return await coro_factory()
     finally:
-        runtime.close()
+        await runtime.aclose()
 
 
 def cmd_run(args, mode: str) -> int:
@@ -290,6 +304,19 @@ def cmd_doctor(args) -> int:
                 continue
             pulled = provider.model in models or f"{provider.model}:latest" in models
             report(pulled, label, "ready" if pulled else f"run `ollama pull {provider.model}`")
+            if pulled:
+                from agentic.llm.providers import OllamaProvider
+
+                sees = provider.vision
+                if sees is None:
+                    sees = OllamaProvider(name, provider).supports_vision()
+                report(
+                    True if sees else None,
+                    f"Vision ({provider.model})",
+                    "can see screenshots"
+                    if sees
+                    else "text only; computer use relies on the accessibility tree",
+                )
         else:
             has_key = bool(provider.api_key()) or not provider.api_key_env
             report(
@@ -311,7 +338,12 @@ def cmd_doctor(args) -> int:
         "playwright": "browser_render (pip install playwright && playwright install chromium)",
         "pyautogui": "desktop_* tools (pip install pyautogui)",
         "pytesseract": "desktop_read_screen (pip install pytesseract + Tesseract binary)",
+        "keyboard": "Ctrl+Alt+Q emergency stop (pip install keyboard)",
     }
+    if sys.platform == "win32":
+        optional["uiautomation"] = (
+            "desktop_ui_tree, the precise way to see apps (pip install uiautomation)"
+        )
     for module, purpose in optional.items():
         report(True if importlib.util.find_spec(module) else None, f"Optional: {module}", purpose)
     if importlib.util.find_spec("pytesseract"):

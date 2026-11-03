@@ -138,7 +138,7 @@ def create_app(
                 telegram.stop()
             for job in [*background_jobs, *tasks.values()]:
                 job.cancel()
-            runtime.close()
+            await runtime.aclose()
 
     app = FastAPI(title="Agentic Gateway", version=__version__, lifespan=lifespan)
     app.state.runtime = runtime

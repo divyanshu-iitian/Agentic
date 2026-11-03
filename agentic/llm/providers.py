@@ -12,7 +12,15 @@ from typing import Any
 import requests
 
 from agentic.config import ProviderConfig
-from agentic.llm.base import Completion, Message, Provider, ProviderError, ToolCall, ToolSpec
+from agentic.llm.base import (
+    Completion,
+    ImagePart,
+    Message,
+    Provider,
+    ProviderError,
+    ToolCall,
+    ToolSpec,
+)
 from agentic.llm.jsonutil import extract_json_object
 
 DEFAULT_BASE_URLS = {
@@ -106,7 +114,19 @@ class OllamaProvider(_HTTPProvider):
             ]
         if message.role == "tool" and message.name:
             payload["tool_name"] = message.name
+        if message.images:
+            payload["images"] = [image.data for image in message.images]
         return payload
+
+    def supports_vision(self) -> bool:
+        """Ask Ollama whether the configured model accepts images."""
+        try:
+            response = self.session.post(
+                f"{self.base_url}/api/show", json={"model": self.model}, timeout=5
+            )
+            return response.ok and "vision" in (response.json().get("capabilities") or [])
+        except (requests.RequestException, ValueError):
+            return False
 
     def health(self) -> bool:
         try:
@@ -165,6 +185,14 @@ class OpenAICompatibleProvider(_HTTPProvider):
                 "content": message.content,
             }
         payload: dict[str, Any] = {"role": message.role, "content": message.content}
+        if message.images:
+            payload["content"] = [
+                {"type": "text", "text": message.content or "(image)"},
+                *(
+                    {"type": "image_url", "image_url": {"url": _data_url(image)}}
+                    for image in message.images
+                ),
+            ]
         if message.tool_calls:
             payload["content"] = message.content or None
             payload["tool_calls"] = [
@@ -256,14 +284,32 @@ class AnthropicProvider(_HTTPProvider):
                 )
                 converted.append({"role": "assistant", "content": content})
             elif converted and converted[-1]["role"] == message.role:
-                # The API expects alternating turns; fold same-role text together.
+                # The API expects alternating turns; fold same-role turns together.
                 previous = converted[-1]
                 if isinstance(previous["content"], str):
                     previous["content"] = [{"type": "text", "text": previous["content"]}]
-                previous["content"].append({"type": "text", "text": message.content or "(empty)"})
+                previous["content"].extend(_anthropic_blocks(message))
+            elif message.images:
+                converted.append({"role": message.role, "content": _anthropic_blocks(message)})
             else:
                 converted.append({"role": message.role, "content": message.content or "(empty)"})
         return converted
+
+
+def _anthropic_blocks(message: Message) -> list[dict[str, Any]]:
+    blocks: list[dict[str, Any]] = [
+        {
+            "type": "image",
+            "source": {"type": "base64", "media_type": image.media_type, "data": image.data},
+        }
+        for image in message.images
+    ]
+    blocks.append({"type": "text", "text": message.content or "(empty)"})
+    return blocks
+
+
+def _data_url(image: ImagePart) -> str:
+    return f"data:{image.media_type};base64,{image.data}"
 
 
 def _openai_tool(tool: ToolSpec) -> dict[str, Any]:
@@ -332,7 +378,7 @@ class PromptToolProvider:
                     Message("assistant", json.dumps({"tool": call.name, "args": call.arguments}))
                 )
             else:
-                flattened.append(Message(message.role, message.content))
+                flattened.append(Message(message.role, message.content, images=message.images))
         return flattened
 
 
